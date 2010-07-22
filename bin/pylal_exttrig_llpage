@@ -25,8 +25,11 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 
+from glue.ligolw import utils
+
 from glue import lal
 from glue import segments
+from glue import cbcwebpage
 from glue.ligolw import table
 from glue.ligolw import lsctables
 from pylal import grbsummary
@@ -353,6 +356,16 @@ def ifo_string(ifos):
   ifo_list.sort()
   return "".join(ifo_list)
 
+# FIXME: Put me into lsctables or so
+def get_xmltable_from_file(filename, tablename, verbose = False):
+
+
+  print filename
+  xmldoc = utils.load_filename(filename, verbose=verbose,\
+                               gz=filename.endswith(".gz"))
+  xmltable = table.get_table(xmldoc, tablename)
+  return xmltable
+
 
 # --------------------------------
 def modify_opts(opts, grb, output_dir):
@@ -367,6 +380,312 @@ def modify_opts(opts, grb, output_dir):
   mkdirsafe(mod_opt.output_path)
 
   return mod_opt
+
+# FIXME Needs to go into markup or so
+def add_href(page, href="", name="click here"):
+  try:
+    page.add("<a href=\"" + href + "\" rel=\"external\"> " + name + "</a>")
+  except: 
+    logText(logfile, "Could not create link "+ href, "error")
+  return page
+
+# ---------------------------------------------------------
+def get_version(executable): 
+  """
+  Search for the tag and version of an executable using the --version argument.
+
+  @param executable: the name of an executable
+  @return: the commit ID of the executable
+  """
+  output=[]
+  try:
+    # this is surely useless now to make a distinction with trigbank 
+    cmd = executable+" --version"
+    output,status = make_external_call(cmd, False,  False, True)
+  except:  
+    output= '(not found)' 
+
+  output = output.split('\n')
+
+  #searching for the version, which may be empty(undefined)
+  version = None
+  for entry in output:
+    if entry.startswith('$lalappsCommitID'):
+      version = 'Version is '+ entry.split(' ')[1] +'.'
+
+  return version
+
+# --------------------------------
+def create_subpage_general(subpage, cp, grb):
+
+  # add a section to that subpage
+  subpage.add_section("section_code","Code information")
+
+  #subpage.sections["section_code"].add_table(my_table, "The title of my table", "A caption describing the fact that this table is meaningless")
+  #subpage.sections["section_code"].add('The ')
+
+  stage_keys =  ['inspiral','onoff','inj']
+  tag_table = []
+  for stage in stage_keys:
+    code = grb.code[stage]
+    if code:
+      tag_table.append([stage, code.get_tag()])
+    else: 
+      tag_table.append([stage, '---'])
+  subpage.sections["section_code"].add_table(tag_table, "Used code tags for the pipeline stages") 
+
+  # create the configuration file section
+  section_conf = subpage.add_section("section_conf","Used configuration files")
+
+  link = cp.get('paths','publishing_url')+'/GRB%s/S6GRB_trigger_hipe.ini'%grb.name
+  section_conf.add_link(href=link, text="S6GRB_trigger_hipe.ini file")
+  
+
+  #
+  # retrieve all the versions of the used executables
+  #
+  section_version = subpage.add_section("section_version","The following executables have been used")
+
+  trigger_inifile = cp.get('paths','main')+'/GRB%s/S6GRB_trigger_hipe.ini'%grb.name
+  triggercp = ConfigParser.ConfigParser()
+  triggercp.read(trigger_inifile)
+
+  executables = []
+  for item,value in triggercp.items('condor'):
+    if item != 'universe':
+      executables.append(os.path.split(value)[1])     
+
+  table = []
+  for executable in executables:
+    fullpath = cp.get('paths','main')+'/GRB%s/%s'%(grb.name, executable)    
+    version = get_version(fullpath)
+    table.append([executable, version])
+
+  # add the table to the page
+  section_version.add_table(table, "Versions used for each executable")  
+
+
+  ## the postprocessing executables
+  executables_onoff = ['plotinspiral','plotnumtemplates','plotthinca',\
+                 'pylal_exttrig_llsummary','pylal_relic','pylal_grbtimeslide_stats']
+
+
+  pylal_tag = peu.get_code_tag()
+  table = []
+  for executable in executables_onoff:
+    fullpath = "%s/GRB%s/postprocessing_%s/executables/%s" % (grb.analysis_dir, grb.name, pylal_tag, executable)
+    version = get_version(fullpath)
+    table.append([executable, version])
+
+  # add the table to the page
+  section_version.add_table(table, "Versions used for each executable")
+
+
+  #executables_lik = [plotgrbl','plot_grbUL']
+
+# --------------------------------
+def create_subpage_trigger(subpage, cp, grb):
+  month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug',\
+         'Sep','Oct','Nov','Dec']
+
+
+  # add a section to that subpage
+  subpage.add_section("trigger_basic","Basic GRB information")
+
+  grb_table = []
+  grb_table.append(['GRB', grb.name])
+  grb_table.append(['GPS', grb.time])
+  d = date.XLALGPSToUTC(date.XLALINT8NSToGPS(grb.time*1.0e+9))
+  date_text = '%s %02d %d %02d:%02d:%02d' %\
+         (month[d[1]-1], d[2], d[0], d[3], d[4], d[5])
+  grb_table.append(['time', date_text])
+  grb_table.append(['right ascension [degree]', grb.ra])
+  grb_table.append(['declination [degree]', grb.de])
+  if grb.duration>0:
+    grb_table.append(['T<sub>90</sub>', grb.duration])
+  else:
+    grb_table.append(['T<sub>90</sub>', '---'])
+  grb_table.append(['IFO\'s used',"".join(grb.ifolist) ])
+  
+  subpage.sections["trigger_basic"].add_table(grb_table, "Basic information on the used trigger")
+
+# FIXME: Merge me with the external call structure in pylal_exttrig_llutils.py (or somewhere else maybe...)
+# ***************************************************************************
+def make_external_call(\
+  command, show_stdout=False, \
+  show_command=False, show_error=True):
+  """
+  Run a command line argument and print informative messages on failure.
+  It returns two outputs: the stdout of the command, and its status.  
+
+    >>> make_external_call('cp * /tmp', False, False, True)
+
+  @param command: the command to try
+  @type command: string
+  @param show_stdout: show the stdout 
+  @type show_stdout: boolean
+  @param show_command: show the command
+  @type show_command: boolean
+  @param show_error: show the error if any
+  @type show_error: boolean
+  @return: the stdout and a status  
+
+
+  """
+  if show_command and opts.verbose is True: 
+    print "--- Trying this command :" + command
+
+  stdin, out, err = os.popen3(command)
+  pid, status = os.wait()
+  this_output = out.read()
+  if show_error & status != 0:
+    print >>sys.stderr, "External call failed."
+    print >>sys.stderr, "  status: %d" % status
+    print >>sys.stderr, "  stdout: %s" % this_output
+    print >>sys.stderr, "  stderr: %s" % err.read()
+    print >>sys.stderr, "  command: %s" % command
+    sys.exit(status)
+  if show_stdout:
+    if this_output[0:1]=='\n': 
+      print  this_output[1:]  #first character is \n
+    else:
+      print this_output
+
+  stdin.close()
+  out.close()
+  err.close()  
+  return this_output, status
+
+# ***************************************************************************
+def get_segments_tag(tag, grb):
+  """
+  reads segment files and return table of duration for each ifo
+ 
+    >>> get_segments_tag("SELECTED_SEGS")
+
+  @param tag: a tag to the segments
+  @type tag: string
+  return: 
+  """
+  # some variables
+  datadir = "../../"
+  thisdata = {}
+  thisdata['segments'] = ['filename', 'duration(days)' ,'duration (s)']
+
+  for ifo in grb.ifolist:
+    print ifo, grb.ifolist
+    vetofile = datadir + ifo + '-'+tag + '-%d-%d.xml' %(grb.time-15000, 30000)
+    scifile = datadir + 'segments'+ifo+'_grb%s.xml'%grb.name
+    print vetofile, scifile
+    if os.path.isfile(vetofile) and os.path.isfile(scifile):
+      command = 'segexpr \'intersection(%s,%s)\' -include index,duration | awk \'{sum=sum+$4} END {print sum}\'' % (vetofile,scifile)
+      output_seconds, status = \
+        make_external_call(command, False, False, True)
+      if output_seconds.rstrip():
+        thisdata[ifo] = [os.path.basename(vetofile), "%.2f"%float(output_seconds)/86400.0, "%.2f"%output_seconds]
+      else:
+        thisdata[ifo] = [os.path.basename(vetofile), '0.0', '0.0']
+    else: 
+      raise ValueError, "Files do not exist! Maybe make this a warning..."
+      #logText(logfile , 'File ' + file + ' and/or ' + scifile + ' does not exist. Cannot read segments!',"error")
+
+  return thisdata
+
+
+# --------------------------------
+def create_subpage_data(subpage, cp, grb):
+
+  subpage.add("<p><b>This section summarizes the data which was available for analysis.</b>")
+
+  #
+  # SAcience section
+  # 
+
+  # add a section to that subpage
+  section = subpage.add_section("data_science","Science segments")
+
+  segplot = cp.get('paths','publishing_url')+'/GRB%s/plot_segments_grb%s.png'%(grb.name, grb.name)
+  section.add_link(href=segplot, text='<img src="%s" border="2" width="300">'%segplot)
+
+  #
+  # DQ section
+  #
+  section = subpage.add_section("data_DQ","Data quality")
+
+  # veto-definer file
+  section.add('The following veto definer file has been used: '+ grb.veto_definer)
+  filename = "../../"+grb.veto_definer
+  proctab = get_xmltable_from_file(filename, lsctables.ProcessTable.tableName)
+  section.add("Version used: "+proctab[0].version)
+
+  segs = get_segments_tag("VETOTIME_CAT2", grb)
+  #print segs
+
+  dq_table = []
+  dq_table.append(segs['segments'])
+  for ifo in grb.ifolist:
+    dq_table.append(segs[ifo])
+  #print dq_table
+
+  section.add_table(dq_table,"Data quality information")
+  
+  
+# --------------------------------
+def create_subpage_bkg(subpage, cp, grb, statistic):
+
+  #subpage.add("<p><b>This section summarizes the background diagnostics.</b>")
+
+  ifo_times = "".join(grb.ifolist)
+  def file_replace(filenamein):
+    gps_duration = grb.endtime - grb.starttime
+    ident = '%9d-%d' % (grb.starttime, gps_duration)
+
+    fn = copy.deepcopy(filenamein)
+    fn = fn.replace('MACIDENT',ident)
+    fn = fn.replace('MACIFOS',ifo_times)
+    fn = fn.replace('MACGRB',grb.name)
+    fn = fn.replace('MACSTAT', statistic)
+    return fn
+
+  # define a complete list of images to be shown on the sanity page
+  page_sections = {}
+  page_sections['numtemplates']={'page':'H1L1V1-plotnumtemplates_GRBMACGRB-MACIDENT.html',\
+                                   'images':['H1L1V1-plotnumtemplates_GRBMACGRB_banksize-MACIDENT.png']}
+  page_sections['inspiralH1']={'page':'H1-plotinspiral_SECOND_H1_GRBMACGRB-MACIDENT.html',\
+                             'images':['H1-plotinspiral_SECOND_H1_GRBMACGRB_snr_vs_time-MACIDENT.png',\
+                                       'H1-plotinspiral_SECOND_H1_GRBMACGRB_snr_histogram-MACIDENT.png']}
+  page_sections['inspiralL1']={'page':'L1-plotinspiral_SECOND_L1_GRBMACGRB-MACIDENT.html',\
+                                 'images':['L1-plotinspiral_SECOND_L1_GRBMACGRB_snr_vs_time-MACIDENT.png',\
+                                           'L1-plotinspiral_SECOND_L1_GRBMACGRB_snr_histogram-MACIDENT.png']}
+  page_sections['inspiralV1']={'page':'V1-plotinspiral_SECOND_V1_GRBMACGRB-MACIDENT.html',\
+                                 'images':['V1-plotinspiral_SECOND_V1_GRBMACGRB_snr_vs_time-MACIDENT.png',\
+                                           'V1-plotinspiral_SECOND_V1_GRBMACGRB_snr_histogram-MACIDENT.png']}
+  page_sections['thinca']={'page':'MACIFOS-plotthinca_GRBMACGRB-MACIDENT.html',\
+                             'images':['MACIFOS-plotthinca_GRBMACGRB_cum_hist_MACSTAT-MACIDENT.png']}
+  page_sections['grbstats'] = {'page':'pylal_grbtimeslide_stats_GRBMACGRB-MACIDENT.html',
+                                 'images':['pylal_grbtimeslide_stats_GRBMACGRB_trials_MACSTAT_cum_hist-0.86-3.48-MACIDENT.png',\
+                                           'pylal_grbtimeslide_stats_GRBMACGRB_trials_MACSTAT_cum_hist-3.48-7.40-MACIDENT.png',\
+                                           'pylal_grbtimeslide_stats_GRBMACGRB_trials_MACSTAT_cum_hist-7.40-17.50-MACIDENT.png']}
+
+  # replace the macro definitions and put it together, in the given order
+  main_path = cp.get('paths','publishing_url')+'/GRB%s/'%(grb.name)
+  for key in ['numtemplates','inspiralH1','inspiralL1','inspiralV1','thinca','grbstats']:
+
+    sec = subpage.add_section(key,"Plots from "+key)
+    
+    pagelink = file_replace(page_sections[key]['page'])
+    images = page_sections[key]['images']   
+
+    for image in images: 
+      imagename = file_replace(image)
+      print image, imagename
+      fullimagepath = main_path+'Images/'+imagename
+      sec.add_link(href=fullimagepath, text='<img src="%s" border="2" width="300">'%fullimagepath)
+
+    sec.add('<br')
+    sec.add_text(txt='Detailed results can be found here:', bold=True)
+    sec.add_link(href = main_path+pagelink, text = key+' summary page')
+  
 
 # --------------------------------
 def get_options():
@@ -416,14 +735,17 @@ def get_options():
     parser.add_option("-r", "--root-dir", action="store", \
         default='public_html', help="path to a temporary directory "\
         "to put the summary page")
-    parser.add_option("--output-path", default=None,
-        help="path for putting the output files")
-    parser.add_option("--openbox-path", default=None,
-        help="path for putting the OPENBOX files")
-    parser.add_option("-o", "--output-path-html", action="store", default=None,
-        help="path to directory to put the output webpage for publishing")
+    parser.add_option("--output-sanity", default=None,
+        help="path for the sanity plots and results.")
+    parser.add_option("--output-box", default=None,
+        help="path for the openbox plots and results.")
+    parser.add_option("--output-www", action="store", default=None,
+        help="path to the webpage directory.")
     parser.add_option("--enable-output", action="store_true", default=False,
         help="enables to make output")
+
+    parser.add_option("--disable-mini-followup", action="store_true", default=False,
+        help="disables the mini followup")
     
     (opts, args) = parser.parse_args()
 
@@ -441,7 +763,7 @@ def get_options():
 # Main
 ##############################################################################
 
-# get the options
+# read the options
 opts = get_options()
 
 # read the configuration file and pass it to peu
@@ -453,11 +775,12 @@ peu.cp = cp
 grb_name = opts.grb_name
 grb = peu.read_grb_from_list(grb_name)
 
-# create the page object with a modified option structure
-page = InspiralUtils.InspiralPage(modify_opts(opts, grb, 'OPENBOX'))
+# Initialize the page object
+page = cbcwebpage.cbcpage(title="Resultpage for GRB %s"%opts.grb_name, path = "test")
+
 
 #
-# read the input-data
+# read and check the input-data
 #
 id1,  statistic, mc_bins, mc_ifo_cats, onsource_loudest_by_cat \
     = pickle.load(open(opts.onsource_pickle))
@@ -468,7 +791,7 @@ assert id1==id2, 'Pickle IDs not identical! '
 # some dummy hack, fix, feature, whatever
 cats = [cat[0] for cat in mc_ifo_cats.centres()]
 
-
+# check the used statistics
 if statistic=="effective_snr":
   txt_stat = "eff"
 elif statistic=="new_snr":
@@ -484,7 +807,7 @@ else:
 onsource_fap_by_cat = np.zeros(shape=onsource_loudest_by_cat.shape, dtype=float)
 n_trials =offsource_loudest_by_trial_cat.shape[0]
 
-# loop over the mchirp/ifo bins
+# loop over the mchirp/ifo bins and compute the FAP for each category
 for cat in cats:
 
   index = mc_ifo_cats[cat]
@@ -521,17 +844,20 @@ if len(onsource_coincs) > len(mc_ifo_cats):
 #
 # mini-followup
 #
+if not opts.disable_mini_followup:
+  # define a dummy-option instance
+  fuopts = copy.deepcopy(opts)
+  fuopts.prefix = 'pylal_exttrig_llsummary'
+  fuopts.suffix = '_GRB'+grb.name
+  fuopts.figure_resolution = 60
+  fuopts.output_path = opts.output_box+'/'
 
-# define a dummy-option instance
-fuopts = copy.deepcopy(opts)
-fuopts.prefix = 'pylal_exttrig_llsummary'
-fuopts.suffix = '_GRB'+grb.name
-fuopts.figure_resolution = 60
-fuopts.output_path = opts.openbox_path+'/'
+  # read the cache file and initialize the followup class
+  cache = lal.Cache.fromfile(open('../GRB'+grb.name+'.cache')).sieve(description='ONSOURCE')
+  followup = followup_trigger.FollowupTrigger(cache, fuopts, False)
+else:
+  followup = None
 
-# read the cache file and initialize the followup class
-cache = lal.Cache.fromfile(open('../GRB'+grb.name+'.cache')).sieve(description='ONSOURCE')
-followup = followup_trigger.FollowupTrigger(cache, fuopts, False)
 lsctables.SnglInspiralTable.loadcolumns = ["event_id", "mchirp", "ifo",
         "snr", "chisq", "chisq_dof", "end_time", "end_time_ns", "process_id"]
 
@@ -566,7 +892,7 @@ for cat in cats:
       break
 
   # run the minifollowup on this coinc
-  if use_coinc:
+  if use_coinc and not opts.disable_mini_followup:
     followupname = followup.from_coinc(use_coinc)
   else:
     followupname = None
@@ -607,6 +933,34 @@ for cat in cats:
   # add this row to the rows-list
   rows.append(row)
   output_list.append(output_dict)
+
+
+# add all the subpages
+page.add_subpage("subpage_general","General information", "General Information")
+page.add_subpage("subpage_trigger","Trigger information", "Trigger Information")
+page.add_subpage("subpage_data","Data information", "Data Information")
+page.add_subpage("subpage_bg_diag","Background diagnostics", "Background diagnostics")
+page.add_subpage("subpage_inj_diag","Injection diagnostics", "Injection diagnostics")
+page.add_subpage("subpage_lik_diag","Likelihood diagnostics", "Likelihood diagnostics")
+
+# calls to the specific subfunctions to create the subpages
+create_subpage_general(page.subpages["subpage_general"], cp, grb)
+create_subpage_trigger(page.subpages["subpage_trigger"], cp, grb)
+create_subpage_data(page.subpages["subpage_data"], cp, grb)
+create_subpage_bkg(page.subpages["subpage_bg_diag"], cp, grb, statistic)
+
+section_gts = page.subpages["subpage_bg_diag"].sections["grbstats"]
+table_gts = [columns]
+table_gts.extend(rows)
+print table_gts
+section_gts.add_table(table_gts, 'test')
+
+# write the page to disk
+page.write("mypage")
+
+
+
+sys.exit(0)
 
 
 # add this table to the html file
