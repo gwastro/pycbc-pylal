@@ -335,7 +335,6 @@ if not opts.show_plot:
   import matplotlib
   matplotlib.use('Agg')
 from pylab import *
-#from pylal import viz
 rc('text', usetex=True)
 
 #
