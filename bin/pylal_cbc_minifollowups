@@ -13,7 +13,7 @@ from optparse import *
 from glue import lal
 from pylal import SnglInspiralUtils
 from pylal import CoincInspiralUtils
-from pylal.datatypes import LIGOTimeGPS
+from pylal.xlal.datatypes.ligotimegps import LIGOTimeGPS
 from glue.ligolw import ligolw
 from glue.ligolw import table
 from glue.ligolw import lsctables
