@@ -36,7 +36,6 @@ class PkgConfig(object):
 gsl_pkg_config = PkgConfig("gsl")
 lal_pkg_config = PkgConfig("lal")
 lalsupport_pkg_config = PkgConfig("lalsupport")
-lalburst_pkg_config = PkgConfig("lalburst")
 # FIXME:  works for GCC only!!!
 lal_pkg_config.extra_cflags += ["-std=c99"]
 lalframe_pkg_config = PkgConfig("lalframe")
@@ -367,15 +366,6 @@ setup(
 			libraries = lal_pkg_config.libs,
 			library_dirs = lal_pkg_config.libdirs,
 			runtime_library_dirs = lal_pkg_config.libdirs,
-			extra_compile_args = lal_pkg_config.extra_cflags
-		),
-		Extension(
-			"pylal.xlal.lalburst",
-			["src/xlal/lalburst.c", "src/xlal/misc.c"],
-			include_dirs = lal_pkg_config.incdirs + lalmetaio_pkg_config.incdirs + lalsimulation_pkg_config.incdirs + lalburst_pkg_config.incdirs + [numpy_get_include(),"src/xlal"],
-			libraries = lal_pkg_config.libs + lalsimulation_pkg_config.libs + lalburst_pkg_config.libs,
-			library_dirs = lal_pkg_config.libdirs + lalsimulation_pkg_config.libdirs + lalburst_pkg_config.libdirs,
-			runtime_library_dirs = lal_pkg_config.libdirs + lalsimulation_pkg_config.libdirs + lalburst_pkg_config.libdirs,
 			extra_compile_args = lal_pkg_config.extra_cflags
 		),
 		Extension(
