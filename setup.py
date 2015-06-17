@@ -1,28 +1,22 @@
 # setup for pylal
-
+try:
+    from setuptools import setup
+    from setuptools.command import install
+except ImportError as e:
+    from distutils.core import setup
+    from distutils.command import install
 
 import os
 from misc import generate_vcs_info as gvcsi
-from distutils.core import setup, Extension
-from distutils.command import install
+from distutils.core import Extension
+from distutils.errors import DistutilsError
 from distutils.command import build
-from distutils.command import build_py
-from distutils.command import sdist
 from distutils import log
+from distutils.file_util import write_file
 import subprocess
 import sys
 import time
 from numpy.lib.utils import get_include as numpy_get_include
-
-
-#
-# check python version
-#
-
-if sys.version_info[0] != 2 or sys.version_info[1] < 4:
-    log.error("Python version is %s.  pylal requires a Python version such that 2.4 <= version < 3" % sys.version)
-    sys.exit(1)
-
 
 class PkgConfig(object):
     def __init__(self, names):
@@ -42,11 +36,31 @@ lalmetaio_pkg_config = PkgConfig("lalmetaio")
 lalsimulation_pkg_config = PkgConfig("lalsimulation")
 lalinspiral_pkg_config = PkgConfig("lalinspiral")
 
-def remove_root(path, root):
-    if root:
-        return os.path.normpath(path).replace(os.path.normpath(root), "")
-    return os.path.normpath(path)
+class pylal_install(install.install):
+    def run(self):
+        etcdirectory = os.path.join(self.install_data, 'etc')
+        if not os.path.exists(etcdirectory):
+            os.makedirs(etcdirectory)
 
+        filename = os.path.join(etcdirectory, 'pylal-user-env.sh')
+        self.execute(write_file,
+                     (filename, [self.extra_dirs]),
+                     "creating %s" % filename)
+
+        env_file = open(filename, 'w')
+        print >> env_file, "PATH=" + self.install_scripts + ":$PATH"
+        print >> env_file, "PYTHONPATH=" + self.install_libbase + ":$PYTHONPATH"
+        print >> env_file, "export PYTHONPATH"
+        print >> env_file, "export PATH"
+        env_file.close()
+
+        try:
+            install.install.do_egg_install(self)
+        except DistutilsError as err:
+            print err
+        else:
+            install.install.run(self)
+            
 def write_build_info():
     """
     Get VCS info from misc/generate_vcs_info.py and add build information.
@@ -54,7 +68,7 @@ def write_build_info():
     pylal/git_version.py.
     """
     date = branch = tag = author = committer = status = builder_name = build_date = ""
-    id = "0.9.dev1"
+    id = "1.0.dev0"
     
     try:
         v = gvcsi.generate_git_version_info()
@@ -96,11 +110,7 @@ def write_build_info():
 
 
 version = write_build_info()
-
-class pylal_build_py(build_py.build_py):
-    def run(self):
-        log.info("Generated pylal/git_version.py")
-        build_py.build_py.run(self)
+log.info("Generated pylal/git_version.py")
 
 setup(
     name = "pycbc-pylal",
@@ -110,14 +120,12 @@ setup(
     url = 'https://github.com/ligo-cbc/pycbc-pylal',
     description = "legacy support python ligo algorithm library",
     license = "See file LICENSE",
+    cmdclass = {'install' : pylal_install,},
     packages = [
         "pylal",
         "pylal.xlal",
         "pylal.xlal.datatypes"
     ],
-    cmdclass = {
-        "build_py": pylal_build_py,
-    },
     ext_modules = [
         Extension(
             "pylal.tools",
