@@ -53,7 +53,8 @@ def write_build_info():
     Substitute these into misc/git_version.py.in to produce
     pylal/git_version.py.
     """
-    id = date = branch = tag = author = committer = status = builder_name = build_date = ""
+    date = branch = tag = author = committer = status = builder_name = build_date = ""
+    id = "0.9.dev1"
     
     try:
         v = gvcsi.generate_git_version_info()
@@ -91,21 +92,23 @@ def write_build_info():
         stdout=open('pylal/git_version.py', 'w'))
     if sed_retcode:
         raise gvcsi.GitInvocationError
+    return id
 
+
+version = write_build_info()
 
 class pylal_build_py(build_py.build_py):
     def run(self):
-        write_build_info()
         log.info("Generated pylal/git_version.py")
         build_py.build_py.run(self)
 
 setup(
     name = "pycbc-pylal",
-    version = "0.7.3",
-    author = "Kipp Cannon and Nickolas Fotopoulos",
-    author_email = "lal-discuss@ligo.org",
-    description = "Python LIGO Algorithm Library",
-    url = "http://www.lsc-group.phys.uwm.edu/daswg/",
+    version = version,
+    author = 'Ligo Virgo Collaboration - PyCBC team',
+    author_email = 'alex.nitz@ligo.org',
+    url = 'https://github.com/ligo-cbc/pycbc-pylal',
+    description = "legacy support python ligo algorithm library",
     license = "See file LICENSE",
     packages = [
         "pylal",
