@@ -54,12 +54,12 @@ class pylal_install(install.install):
         print >> env_file, "export PATH"
         env_file.close()
 
-        try:
-            install.install.do_egg_install(self)
-        except DistutilsError as err:
-            print err
-        else:
-            install.install.run(self)
+        #try:
+        #    install.install.do_egg_install(self)
+        #except DistutilsError as err:
+        #    print err
+        #else:
+        install.install.run(self)
             
 def write_build_info():
     """
