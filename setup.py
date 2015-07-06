@@ -219,9 +219,11 @@ setup(
         ),
     ],
     scripts = [
+        os.path.join("bin", "ligolw_cbc_align_total_spin"),
         os.path.join("bin", "ligolw_cbc_cluster_coincs"),
         os.path.join("bin", "ligolw_cbc_dbinjfind"),
         os.path.join("bin", "ligolw_cbc_hardware_inj_page"),
+        os.path.join("bin", "ligolw_cbc_jitter_skyloc"),
         os.path.join("bin", "ligolw_cbc_plotcumhist"),
         os.path.join("bin", "ligolw_cbc_plotfm"),
         os.path.join("bin", "ligolw_cbc_plotifar"),
