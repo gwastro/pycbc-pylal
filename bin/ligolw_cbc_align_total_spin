@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/mnt/qfs5/detchar/opt/gwpysoft/bin/python
 # Copyright (C) 2010  Nickolas Fotopoulos
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ from glue.ligolw import lsctables
 from glue.ligolw import table
 from glue.ligolw import utils
 from glue.ligolw.utils import process as ligolw_process
-from pylal import date
 from pylal import git_version
 from pylal import sphericalutils as su
 from pylal import inject
