@@ -1,4 +1,4 @@
-#!/mnt/qfs5/detchar/opt/gwpysoft/bin/python
+#!/usr/bin/env python
 # Copyright (C) 2010  Nickolas Fotopoulos
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -158,7 +158,6 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     sim_geocent_end = sim.get_end()
     for site, detector in site_location_list:
         site_end = site_end_time(detector, sim)
-        print dir(site_end)
         setattr(sim, site + "_end_time", site_end.gpsSeconds)
         setattr(sim, site + "_end_time_ns", site_end.gpsNanoSeconds)
         setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
