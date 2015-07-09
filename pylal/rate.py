@@ -48,8 +48,10 @@ import math
 import numpy
 import random
 import scipy
-__numpy__version__ = tuple(map(int, numpy.__version__.strip().split(".")))
-__scipy__version__ = tuple(map(int, scipy.__version__.strip().split(".")))
+numpyver = numpy.__version__.strip().split(".")[:3]
+scipyver = scipy.__version__.strip().split(".")[:3]
+__numpy__version__ = tuple(map(int, numpyver))
+__scipy__version__ = tuple(map(int, scipyver))
 if __scipy__version__ >= (0, 9) and __numpy__version__ >= (1, 7):
 	from scipy.interpolate import interp1d, interp2d, LinearNDInterpolator
 else:
