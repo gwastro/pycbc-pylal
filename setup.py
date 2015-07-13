@@ -123,6 +123,7 @@ setup(
     cmdclass = {'install' : pylal_install,},
     packages = [
         "pylal",
+        "pylal.dq",
         "pylal.xlal",
         "pylal.xlal.datatypes"
     ],

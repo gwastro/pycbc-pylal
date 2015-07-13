@@ -29,8 +29,7 @@ This module provides functions to calculate antenna factors for a given time, a 
 """
 import sys
 from math import *
-from pylal.xlal import date
-from pylal import date
+from lal import ArrivalTimeDiff, LIGOTimeGPS, GreenwichMeanSiderealTime
 from pylal import inject
 from pylal.xlal.datatypes.ligotimegps import LIGOTimeGPS
 
@@ -71,7 +70,7 @@ def response( gpsTime, rightAscension, declination, inclination,
 
   # calculate GMST if the GPS time
   gps=LIGOTimeGPS( gpsTime )
-  gmst_rad = date.XLALGreenwichMeanSiderealTime(gps)
+  gmst_rad = GreenwichMeanSiderealTime(gps)
 
   # create detector-name map
   detMap = {'H1': 'LHO_4k', 'H2': 'LHO_2k', 'L1': 'LLO_4k',
@@ -157,7 +156,7 @@ def timeDelay( gpsTime, rightAscension, declination, unit, det1, det2 ):
   
   x1 = inject.cached_detector[detMap[det1]].location
   x2 = inject.cached_detector[detMap[det2]].location
-  timedelay=date.XLALArrivalTimeDiff(list(x1), list(x2), ra_rad, de_rad, gps)
+  timedelay=ArrivalTimeDiff(list(x1), list(x2), ra_rad, de_rad, gps)
 
   return timedelay
   
