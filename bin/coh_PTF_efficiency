@@ -39,7 +39,7 @@ matplotlib.use('Agg')
 import pylab
 from pylal import SimInspiralUtils,MultiInspiralUtils,plotutils,git_version
 from glue import segments,markup
-from pylal.dq import dqSegmentUtils,dqHTMLUtils,dqPlotUtils
+from pylal.dq import dqSegmentUtils,dqHTMLUtils
 from glue.ligolw import table,lsctables,utils,ligolw
 from pylal.coh_PTF_pyutils import *
 import scipy

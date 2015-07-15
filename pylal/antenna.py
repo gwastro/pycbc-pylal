@@ -31,7 +31,6 @@ import sys
 from math import *
 from lal import ArrivalTimeDiff, LIGOTimeGPS, GreenwichMeanSiderealTime
 from pylal import inject
-from pylal.xlal.datatypes.ligotimegps import LIGOTimeGPS
 
 
 __author__ = "Alexander Dietz <Alexander.Dietz@astro.cf.ac.uk>"

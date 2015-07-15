@@ -11,6 +11,6 @@ __version__ = git_version.id
 __date__ = git_version.date
 
 __all__ = ["dqHTMLUtils",\
-           "dqPlotUtils",\
-           "dqSegmentUtils"]
+           "dqSegmentUtils",\
+           "dqTriggerUtils"]
 
