@@ -36,7 +36,8 @@ elapsed_time = lambda: int(time.time()*10**6-start)
 
 import os,sys,matplotlib,numpy as np,re,copy,optparse
 matplotlib.use('Agg')
-import pylab
+import matplotlib.pyplot as plt
+from matplotlib import rc
 from pylal import SimInspiralUtils,MultiInspiralUtils,plotutils,git_version
 from glue import segments,markup
 from pylal.dq import dqSegmentUtils,dqHTMLUtils
@@ -1080,15 +1081,15 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     longInjDistMC[0,:]   = longInjDist
     for i in range(numMCInjs):
       calDistRed = stats.norm.rvs(size=len(foundInjs)) * calError
-      wavDistRed = numpy.abs(stats.norm.rvs(size=len(foundInjs)) * wavErr)
+      wavDistRed = np.abs(stats.norm.rvs(size=len(foundInjs)) * wavErr)
       foundInjDistMC[i+1,:] = foundInjDist / (maxDCCalError * \
                                             (1 + calDistRed) * (1 + wavDistRed))
       calDistRed = stats.norm.rvs(size=len(missedInjs)) * calError
-      wavDistRed = numpy.abs(stats.norm.rvs(size=len(missedInjs)) * wavErr)
+      wavDistRed = np.abs(stats.norm.rvs(size=len(missedInjs)) * wavErr)
       missedInjDistMC[i+1,:] = missedInjDist / (maxDCCalError *\
                                (1 + calDistRed) * (1 + wavDistRed))
       calDistRed = stats.norm.rvs(size=totalInjs) * calError
-      wavDistRed = numpy.abs(stats.norm.rvs(size=totalInjs) * wavErr)
+      wavDistRed = np.abs(stats.norm.rvs(size=totalInjs) * wavErr)
       longInjDistMC[i+1,:] = longInjDist / (maxDCCalError *\
                              (1 + calDistRed) * (1 + wavDistRed))
 
@@ -1098,13 +1099,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     # check injections against on source
     if onsourceFile:
-      moreSigThanOnSource = numpy.ndarray((len(massBins), len(foundInjs)))
+      moreSigThanOnSource = np.ndarray((len(massBins), len(foundInjs)))
       for i,bin in enumerate(massBins):
         moreSigThanOnSource[i,:] = (injFAP <= loudOnFAP[bin[0]])
       moreSigThanOnSource = moreSigThanOnSource.all(0)
 
     # loop over mass bins
-    distance_count = numpy.zeros(len(distBins))
+    distance_count = np.zeros(len(distBins))
     for i,bin in enumerate(massBins):
       # construct massCut
       foundInjMassCut  = (bin[0] <= foundInjMchirp)  &(foundInjMchirp < bin[1])
@@ -1144,14 +1145,14 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         foundExcl = onBestNRCut & (moreSigThanOnSource) & \
                     (foundTrigBestNR != 0)
         # if not missed, doublecheck bestNR against nearby triggers
-        nearTest = numpy.zeros((foundExcl).sum()).astype(bool)
+        nearTest = np.zeros((foundExcl).sum()).astype(bool)
         for j,(t,bestNR) in enumerate(zip(foundInjTime[foundExcl],\
                                           foundTrigBestNR[foundExcl])):
           nearBestNR  = trigAllBestNR[zeroLagSlideID]\
                         [np.abs(trigAllTime[zeroLagSlideID]-t) < clusterWindow]
           nearTest[j] = ~((nearBestNR * glitchCheckFac > bestNR).any())
         # apply the local test, putmask doesn't seem to work...
-        #numpy.putmask(foundExcl, foundExcl==True, nearTest)
+        #np.putmask(foundExcl, foundExcl==True, nearTest)
         c = 0
         for z,b in enumerate(foundExcl):
           if foundExcl[z]:
@@ -1201,12 +1202,12 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
             foundOnBestNR[i,j]       += numExcl
             foundOnBestNR[i,-1]      += numExcl
    
-    numpy.savetxt('%s/foundmaxbestnr.txt' % outdir, foundmaxBestNR.T)
-    numpy.savetxt('%s/foundmaxbestnrnomc.txt' % outdir, foundmaxBestNRNoMC.T)
-    numpy.savetxt('%s/foundonbestnr.txt' % outdir, foundOnBestNR.T)
-    numpy.savetxt('%s/foundonbestnrnomc.txt' % outdir, foundOnBestNRNoMC.T)
-    numpy.savetxt('%s/numinjections.txt' % outdir, numInjections.T)
-    numpy.savetxt('%s/numinjectionsnomc.txt' % outdir, numInjectionsNoMC.T)
+    np.savetxt('%s/foundmaxbestnr.txt' % outdir, foundmaxBestNR.T)
+    np.savetxt('%s/foundmaxbestnrnomc.txt' % outdir, foundmaxBestNRNoMC.T)
+    np.savetxt('%s/foundonbestnr.txt' % outdir, foundOnBestNR.T)
+    np.savetxt('%s/foundonbestnrnomc.txt' % outdir, foundOnBestNRNoMC.T)
+    np.savetxt('%s/numinjections.txt' % outdir, numInjections.T)
+    np.savetxt('%s/numinjectionsnomc.txt' % outdir, numInjectionsNoMC.T)
 
     if verbose: sys.stdout.write("Found/missed injection efficiency "+\
                                  "calculations completed at %d.\n"\
@@ -1296,7 +1297,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   for i,bin in enumerate(massBins):
     np.savetxt('%s/bestnr_vs_fap_%s_%s_numbers.txt' %(outdir, bin[0], bin[1]),
                fullTimeBinVetoMaxBestNR[i], delimiter='/t')
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     cumplot = plotutils.CumulativeHistogramPlot("BestNR",
                                                  "False alarm probability",
@@ -1305,8 +1306,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     cumplot.finalize(num_bins=50)
     cumplot.ax.set_ylim(ymax=1.2)
     cumplot.savefig('%s/bestnr_vs_fap_%s_%s.png' % (outdir, bin[0], bin[1]))
+    plt.close()
 
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     cumplot = plotutils.CumulativeHistogramPlot("SNR",
                                                  "False alarm probability",
@@ -1315,8 +1317,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     cumplot.finalize(num_bins=50)
     cumplot.ax.set_ylim(ymax=1.2)
     cumplot.savefig('%s/snr_vs_fap_%s_%s.png' % (outdir, bin[0], bin[1]))
+    plt.close()
 
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     cumplot = plotutils.CumulativeHistogramPlot("SNR after signal based vetoes",
                                                  "False alarm probability",
@@ -1325,10 +1328,11 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     cumplot.finalize(num_bins=50)
     cumplot.ax.set_ylim(ymax=1.2)
     cumplot.savefig('%s/snruncut_vs_fap_%s_%s.png' % (outdir, bin[0], bin[1]))
+    plt.close()
 
   if doinj:
     distPlotVals = [np.asarray(bin).mean() for bin in distBins]
-    ptfcolormap = pylab.cm.spring
+    ptfcolormap = np.cm.spring
     ptfcolormap.set_over('g')
   
     lineColours = ['r-','b-','g-','m-','c-']
@@ -1374,7 +1378,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     f.close()
 
     # plot efficiency
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     ax.plot(distPlotVals, (finjsNoMC/totalinjsNoMC), 'g-')
     ax.plot(distPlotVals, (finjs/totalinjs), 'r-')
@@ -1391,6 +1395,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylabel("Fraction of injections found louder than loudest background")
     ax.set_xlabel("Distance (Mpc)")
     fig.savefig('%s/BestNR_max_efficiency.png' % (outdir))
+    plt.close()
 
     # Calculate 50% sensitive distance to file
     eff_low = finjsNoMC/totalinjsNoMC
@@ -1418,7 +1423,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                           "triggers in the offsource) using %s is: %s<br>"\
                           % (bin[0], bin[1], 'BestNR', foundOnBestNR[i,-1])\
                           for i,bin in enumerate(massBins)])) 
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     ax.grid()
 
@@ -1489,9 +1494,10 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylim([0,1])
     ax.set_xlim(0, 2.*upperDist - lowerDist)
     fig.savefig('%s/BestNR_on_efficiency.png' % (outdir))
-      
+    plt.close()
+  
     # plot found missed injections
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     if len(missedInjMchirp):
       ax.scatter(missedInjMchirp, missedInjEffDist, c="k", marker='x',\
@@ -1505,7 +1511,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.grid()
     if len(gIFARMchirp):
       p = ax.scatter(gIFARMchirp, gIFAREffDist, c=gIFARStat,\
-                     norm=pylab.Normalize(0,1,clip=False), marker='o',\
+                     norm=np.Normalize(0,1,clip=False), marker='o',\
                      edgecolors='none')
     ax.semilogy()
     if len(gIFARMchirp):
@@ -1516,8 +1522,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_title("Injections found louder than loudest background event")
     #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig('%s/found_missed_injections_effdist.png' % outdir)
-  
-    fig = pylab.figure()
+    plt.close()
+
+    fig = plt.figure()
     ax = fig.gca()
     if len(missedInjTime):
       ax.scatter(missedInjTime, missedInjEffDist, c="k", marker='x',\
@@ -1530,7 +1537,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.grid()
     if len(gIFARTime):
       p = ax.scatter(gIFARTime, gIFAREffDist, c=gIFARStat,\
-                     norm=pylab.Normalize(0,1,clip=False), marker='o',\
+                     norm=np.Normalize(0,1,clip=False), marker='o',\
                      edgecolors='none')
     ax.semilogy()
     if len(gIFARTime):
@@ -1542,12 +1549,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlim([ start, end ])
     #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig("%s/found_missed_injections_effdist_time.png" % outdir)
-  
+    plt.close()
+
     sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
                  'T':'TAMA' }
 
     for site in sites:
-      fig = pylab.figure()
+      fig = plt.figure()
       ax = fig.gca()
       if len(missedInjMchirp):
         ax.scatter(missedInjMchirp, missedInjEffSiteDist[site],\
@@ -1561,7 +1569,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.grid()
       if len(gIFARMchirp):
         p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site],\
-                      c=gIFARStat, norm=pylab.Normalize(0,1,clip=False),\
+                      c=gIFARStat, norm=np.Normalize(0,1,clip=False),\
                       marker='o', edgecolors='none')
       ax.semilogy()
       if len(gIFARMchirp):
@@ -1573,8 +1581,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       #ax.set_ylim([ 0.5, 1000 ])
       fig.savefig("%s/found_missed_injections_effdist_%s.png"\
                    % (outdir, site.lower()))
-  
-      fig = pylab.figure()
+      plt.close()
+
+      fig = plt.figure()
       ax  = fig.gca()
       if len(missedInjTime):
         ax.scatter(missedInjTime, missedInjEffSiteDist[site],\
@@ -1588,7 +1597,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.grid()
       if len(gIFARTime):
         p = ax.scatter(gIFARTime ,gIFAREffSiteDist[site],\
-                      c=gIFARStat, norm=pylab.Normalize(0,1,clip=False),\
+                      c=gIFARStat, norm=np.Normalize(0,1,clip=False),\
                       marker='o', edgecolors='none')
       ax.semilogy()
       if len(gIFARTime):
@@ -1601,8 +1610,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       #ax.set_ylim([ 0.5, 1000 ])
       fig.savefig("%s/found_missed_injections_effdist_time_%s.png"\
                    % (outdir, site.lower()))
+      plt.close()
   
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     if len(missedInjMchirp):
       ax.scatter(missedInjMchirp, missedInjDist,c="k", marker='x', edgecolors='k')
@@ -1614,7 +1624,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.grid()
     if len(gIFARMchirp):
       p = ax.scatter(gIFARMchirp, gIFARDist, c=gIFARStat,\
-                    norm=pylab.Normalize(0,1,clip=False),\
+                    norm=np.Normalize(0,1,clip=False),\
                     marker='o', edgecolors='none')
     ax.semilogy()
     if len(gIFARMchirp):
@@ -1625,8 +1635,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_title("Injections found louder than loudest background event")
     #ax.set_ylim([ 0.5, 100 ])
     fig.savefig("%s/found_missed_injections_dist.png" % outdir)
+    plt.close()
   
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     if len(missedInjTime):
       ax.scatter(missedInjTime, missedInjDist, c="k", marker='x', edgecolors='k')
@@ -1638,7 +1649,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.grid()
     if len(gIFARTime):
       p = ax.scatter(gIFARTime, gIFARDist, c=gIFARStat,\
-                    norm=pylab.Normalize(0,1,clip=False),\
+                    norm=np.Normalize(0,1,clip=False),\
                     marker='o', edgecolors='none')
     ax.semilogy()
     if len(gIFARTime):
@@ -1650,9 +1661,10 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlim([ start, end ])
     #ax.set_ylim([ 0.5, 100 ])
     fig.savefig("%s/found_missed_injections_dist_time.png" % outdir)
+    plt.close()
 
     # plot sky recovery
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     if len(gFoundTime):
       ax.plot(gFoundTime, gFoundSkyAngle, 'b.')
@@ -1663,8 +1675,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylabel("Rec. sky error (radians)")
     ax.set_xlim([ start, end ])
     fig.savefig('%s/found_sky_error_time.png' % outdir)
-  
-    fig = pylab.figure()
+    plt.close()
+
+    fig = plt.figure()
     ax = fig.gca()
     if len(gFoundMchirp):
       ax.plot(gFoundMchirp, gFoundSkyAngle, 'b.')
@@ -1674,8 +1687,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlabel("Mchirp")
     ax.set_ylabel("Rec. sky error (radians)")
     fig.savefig('%s/found_sky_error_mchirp.png' % outdir)
+    plt.close()
 
-    fig = pylab.figure()
+    fig = plt.figure()
     ax = fig.gca()
     if len(gFoundDist):
       ax.plot(gFoundDist, gFoundSkyAngle, 'b.')
@@ -1687,7 +1701,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.semilogx()
     ax.set_xlim([ 0.5,100 ])
     fig.savefig('%s/found_sky_error_distance.png' % outdir)
- 
+    plt.close()
+
   if verbose: sys.stdout.write("Plots complete at %d.\n" % elapsed_time())
 
 if __name__=='__main__':
@@ -1739,6 +1754,7 @@ if __name__=='__main__':
   segLength = opts.segment_length
   padData = opts.pad_data
 
+  rc('font', size=14)
   main(segdir, outdir, trigFile, foundFile, missedFile,\
        onsourceFile, verbose=verbose, doinj=doinj, chisq_index=q,\
        chisq_nhigh=n, null_thresh = nullt , snrThresh=snrThresh,\

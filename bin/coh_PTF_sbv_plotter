@@ -30,6 +30,7 @@ elapsed_time = lambda: int(time.time()*10**6-start)
 import os,matplotlib,copy
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import rc
 from math import sqrt
 import scipy.stats
 from optparse import OptionParser
@@ -1169,7 +1170,7 @@ if __name__=='__main__':
     vetoString = ','.join([str(i) for i in range(2,opts.veto_category+1)])
     vetoFiles = glob.glob(opts.veto_directory +'/*CAT[%s]*.xml' %(vetoString))
 
-
+  rc('font', size=14)
   main(trigFile, injFile, GRBnum, outdir, segdir, chisq_index=q,\
        chisq_nhigh=n, null_thresh = nullt, max_mchirp=max_mchirp,\
        vetoFiles=vetoFiles,snrThresh=snrThresh,snglSnrThresh=snglSnrThresh,\
