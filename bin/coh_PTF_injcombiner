@@ -144,10 +144,10 @@ def main( injCacheFile, outdir, maxIncl , injString , verbose=False ):
   cache_dict = {}
 
   for found in foundcache:
-    angle = int(found.description.split('_')[2].replace('injectionsAstro' + injString,''))
+    angle = int(''.join(e for e in found.description.split('_')[-2] if e.isdigit()))
     miss = None
     for missed in missedcache:
-      angle2 = int(missed.description.split('_')[2].replace('injectionsAstro' + injString,''))
+      angle2 = int(''.join(e for e in missed.description.split('_')[-2] if e.isdigit()))
       if angle == angle2:
         miss = missed
     if not miss:
@@ -191,8 +191,8 @@ def main( injCacheFile, outdir, maxIncl , injString , verbose=False ):
   ifoTag = foundcache[0].observatory
   start, end = foundcache.to_segmentlistdict().extent_all()
 
-  userTag = injcache[0].description.rsplit( '_', 2 )[0]
-  xmlFile = '%s/%s-%s_injectionsAstro%s_FILTERED_%d_FOUND-%d-%d.xml'\
+  userTag = injcache[0].description.rsplit('_', 2)[0]
+  xmlFile = '%s/%s-%s_%s_FILTERED_%d_FOUND-%d-%d.xml'\
             % ( outdir, ifoTag, userTag, injString, maxIncl, start, end-start )
 
   start,end = map( int, foundcache[0].segment )
