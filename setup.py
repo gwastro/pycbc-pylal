@@ -123,6 +123,7 @@ setup(
     cmdclass = {'install' : pylal_install,},
     packages = [
         "pylal",
+        "pylal.dq",
         "pylal.xlal",
         "pylal.xlal.datatypes"
     ],
@@ -219,6 +220,14 @@ setup(
         ),
     ],
     scripts = [
+        os.path.join("bin", "coh_PTF_efficiency"),
+        os.path.join("bin", "coh_PTF_html_summary"),
+        os.path.join("bin", "coh_PTF_injcombiner"),
+        os.path.join("bin", "coh_PTF_injfinder"),
+        os.path.join("bin", "coh_PTF_inspiral_horizon"),
+        os.path.join("bin", "coh_PTF_sbv_plotter"),
+        os.path.join("bin", "coh_PTF_trig_cluster"),
+        os.path.join("bin", "coh_PTF_trig_combiner"),
         os.path.join("bin", "ligolw_cbc_align_total_spin"),
         os.path.join("bin", "ligolw_cbc_cluster_coincs"),
         os.path.join("bin", "ligolw_cbc_dbinjfind"),
