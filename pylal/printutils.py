@@ -872,7 +872,7 @@ def printmissed(connection, simulation_table, recovery_table, map_label, livetim
             on_times = coinc_segs[','.join(sorted(on_instruments))]
             
             def is_in_on_time(gps_time, gps_time_ns):
-                return LIGOTimeGPS(gps_time, gps_time_ns) in on_times
+                return gps_time + (1e-9 * gps_time_ns) in on_times
             
             connection.create_function('is_in_on_time', 2, is_in_on_time)
             
