@@ -23,7 +23,7 @@
 from __future__ import division
 
 import os,sys,glob,re,time,numpy
-from optparse import OptionParser
+from argparse import ArgumentParser
 from pylal import SimInspiralUtils,MultiInspiralUtils,git_version
 from glue.ligolw import ilwd,ligolw,table,lsctables,utils
 from glue import segments,segmentsUtils,lal
@@ -48,76 +48,87 @@ def parse_command_line():
   
 coh_PTF_injfinder will find and record found and missed injections for the given injection run
 
---inj-cache
---cache
+--input-files
+--inj-files
+--ifo-tag
 --time-window
 """
 
-  parser = OptionParser(usage, version=__version__)
+  parser = ArgumentParser(usage, version=__version__)
 
-  parser.add_option("-c", "--cache", action="store", type="string",\
-                     default=None, help="read trigger files from this cache.")
+  parser.add_argument("-f", "--input-files", nargs="*", action="store",
+                      required=True, metavar="TRIGGER FILE",
+                      help="read in listed trigger files")
 
-  parser.add_option("-i", "--inj-cache", action="store", type="string",\
-                     default=None,\
-                     help="read injection files from this cache.")
+  parser.add_argument("-i", "--ifo-tag", action="store", type=str,
+                      default=None,
+                      help="The ifo tag, H1L1 or H1L1V1 for instance")
 
-  parser.add_option("-o", "--output-dir", action="store", type="string",\
-                     default=os.getcwd(), help="output directory, "+\
+  parser.add_argument("-j", "--inj-files", nargs="*", action="store",
+                      required=True, metavar="INJ_FILE",
+                      help="read injection files from this cache.")
+
+  parser.add_argument("-o", "--output-dir", action="store", type=str,
+                      default=os.getcwd(), help="output directory, "
                                                "default: %default")
 
-  parser.add_option("-W", "--time-window", action="store", type="float",\
+  parser.add_argument("-W", "--time-window", action="store", type=float,
                      default=0, help="The found time window")
 
-  parser.add_option("-b", "--exclude-segments", action="append",\
-                     type="string", default=[],\
-                     help="ignore injections in segments found within "+\
-                          "these files, e.g. buffer segments (may be given "+\
+  parser.add_argument("-b", "--exclude-segments", action="append",
+                     type=str, default=[],
+                     help="ignore injections in segments found within "
+                          "these files, e.g. buffer segments (may be given "
                           "more than once")
-  parser.add_option("-l", "--log-dir", action="store", type="string",\
-                     default=None, help="Location of log files to determine "+\
-                     "if any SpinTaylor injections failed and remove them. If"+\
+  parser.add_argument("-l", "--log-dir", action="store", type=str,
+                     default=None, help="Location of log files to determine "
+                     "if any SpinTaylor injections failed and remove them. If"
                      " not set, no injections will be removed.")
-  parser.add_option("-v", "--verbose", action="store_true", default=False,\
+  parser.add_argument("-V", "--verbose", action="store_true", default=False,
                      help="verbose output, default: %default")
 
-  (opts,args) = parser.parse_args()
+  args = parser.parse_args()
 
-  if not opts.cache:
-    parser.error("--cache must be given")
+  if not args.ifo_tag:
+    parser.error("must provide --ifo-tag")
 
-  if not opts.inj_cache:
-    parser.error("--inj-cache must be given")
+  if not args.input_files:
+    parser.error("--input-files must be given")
 
-  if not opts.time_window > 0:
+  if not args.inj_files:
+    parser.error("--inj-files must be given")
+
+  if not args.time_window > 0:
     parser.error("time window must be given and greater than 0")
 
-  return opts, args
+  return args
 
 # =============================================================================
 # Main function
 # =============================================================================
 
-def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
+def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
          exclude_segments=[], verbose=False):
 
   #
-  # load cache files
+  # load trigger files
   #
 
-  trigcache = lal.Cache.fromfile(open(trigCacheFile, 'r'))
-  injcache  = lal.Cache.fromfile(open(injCacheFile, 'r'))
-  injcache.sort(key=lambda e: int(e.description.split('_')[-1]))
+  trigFiles.sort(key=lambda item: [int(e) if e.isdigit() else e \
+                                   for e in re.split('(\d+)', item)])
+  injFiles.sort(key=lambda item: [int(e) if e.isdigit() else e \
+                                  for e in re.split('(\d+)', item)])
 
-  if len(trigcache)<1:
-    raise Error("No trigger files found.")
-  if len(injcache)<1:
-    raise Error("No injection files found.")
+  missing = []
+  missing.extend([f for f in trigFiles if not os.path.isfile(f)])
+  missing.extend([f for f in injFiles if not os.path.isfile(f)])
+  if len(missing) > 0:
+    raise ValueError("The following files could not be found:\n", missing)
 
   # get ifos
-  ifos = lsctables.instrument_set_from_ifos(trigcache[-1].observatory)
+  ifos = sorted(lsctables.instrument_set_from_ifos(ifoTag))
 
-  if verbose: sys.stdout.write("Cache files loaded at %d.\n" % elapsed_time())
+  if verbose: sys.stdout.write("Input files found at %d.\n" % elapsed_time())
 
   #
   # load exclusion segments
@@ -179,8 +190,8 @@ def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
   # Identify bad injections
   #
 
-  if opts.log_dir:
-    badInjs = identify_bad_injections(opts.log_dir)
+  if args.log_dir:
+    badInjs = identify_bad_injections(args.log_dir)
 
   if verbose: sys.stdout.write("Bad injections identified at %d.\n"\
                                % elapsed_time())
@@ -194,22 +205,19 @@ def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
   objectList = []
   exampleFile = None
 
-  for e in injcache:
+  for injFile in injFiles:
 
-    injFile = e.path
-    num = int(e.description.split('_')[-1])
+    num = int(injFile.rsplit('SPLIT', 1)[-1].split('-')[0])
+    currTrigFiles = [f for f in trigFiles if '_SPLIT%d-' % num in f]
+    print currTrigFiles
 
-    numtrigcache = trigcache.sieve(description='*_%d' % num, exact_match=True)
-
-    if not numtrigcache:
+    if len(currTrigFiles) == 0:
       sys.stdout.write("WARNING: cannot find any files matching "+\
                        "injection %d.\n" % num)
 
-    trigFiles = numtrigcache.pfnlist()
-  
-    if os.path.isfile(injFile) and trigFiles:
+    else:
 
-      if not exampleFile:  exampleFile = numtrigcache[0]
+      if not exampleFile:  exampleFile = currTrigFiles[0]
 
       # get trigs (only columns we need)
       currInjs  = lsctables.New(lsctables.SimInspiralTable,\
@@ -219,7 +227,7 @@ def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
                       if i.get_time_geocent() not in excludes)
       currTrigs  = lsctables.New(lsctables.MultiInspiralTable,\
                                columns=lsctables.MultiInspiralTable.loadcolumns)
-      tmp = MultiInspiralUtils.ReadMultiInspiralFromFiles(trigFiles)
+      tmp = MultiInspiralUtils.ReadMultiInspiralFromFiles(currTrigFiles)
       if tmp is not None:
         currTrigs.extend(tmp)
       if len(currTrigs):
@@ -233,7 +241,7 @@ def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
         except AttributeError:
           trig.time_slide_id=ilwd.ilwdchar("multi_inspiral:time_slide_id:0")
 
-      if opts.log_dir:
+      if args.log_dir:
         currInjs = remove_bad_injections(currInjs,badInjs)
 
       # loop over injections
@@ -333,15 +341,16 @@ def main(trigCacheFile, injCacheFile, timeWindow, outdir,\
 
 if __name__=='__main__':
   
-  opts, args = parse_command_line()
+  args = parse_command_line()
   
-  trigcache  = os.path.abspath(opts.cache)
-  injcache   = os.path.abspath(opts.inj_cache)
-  excludes   = map(os.path.abspath, opts.exclude_segments)
-  timeWindow = opts.time_window
-  outdir     = os.path.abspath(opts.output_dir)
-  verbose    = opts.verbose 
+  trig_files  = os.path.abspath(args.input_files)
+  inj_files   = os.path.abspath(args.inj_files)
+  excludes    = map(os.path.abspath, args.exclude_segments)
+  timeWindow  = args.time_window
+  outdir      = os.path.abspath(args.output_dir)
+  ifo_tag     = args.ifo_tag
+  verbose     = args.verbose 
 
-  main(trigcache, injcache, timeWindow, outdir, exclude_segments=excludes,\
-       verbose=verbose)
+  main(trig_files, inj_files, timeWindow, outdir, ifo_tag,
+       exclude_segments=excludes, verbose=verbose)
   if verbose: sys.stdout.write("Done at %d.\n" % (elapsed_time()))

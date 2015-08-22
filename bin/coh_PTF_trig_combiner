@@ -23,7 +23,7 @@
 from __future__ import division
 
 import os,sys,time
-from optparse import OptionParser
+from argparse import ArgumentParser
 from pylal import MultiInspiralUtils,coh_PTF_pyutils,git_version
 from glue.ligolw import table,lsctables,utils,ligolw,ilwd
 from glue import segments,lal
@@ -48,78 +48,79 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
 
 --ifo-tag
 --user-tag
---cache
+--input_files
 """
 
-  parser = OptionParser(usage, version=__version__)
+  parser = ArgumentParser(usage, version=__version__)
 
-  parser.add_option("-i", "--ifo-tag", action="store", type="string",\
-                     default=None,\
-                     help="The ifo tag, H1L1 or H1L1V1 for instance")
+  parser.add_argument("-i", "--ifo-tag", action="store", type=str,
+                      default=None,
+                      help="The ifo tag, H1L1 or H1L1V1 for instance")
 
-  parser.add_option("-u", "--user-tag", action="store", type="string",\
-                     default='COH_PTF_INSPIRAL_FIRST',\
-                     help="The user tag, COH_PTF_INSPIRAL_FIRST for instance")
+  parser.add_argument("-u", "--user-tag", action="store", type=str,
+                      default='COH_PTF_INSPIRAL_FIRST',
+                      help="The user tag, COH_PTF_INSPIRAL_FIRST for instance")
 
-  parser.add_option("-S", "--slide-tag", action="store", type="string",\
-                     default='',\
-                     help="The slide tag, used to differentiate long slides")
+  parser.add_argument("-S", "--slide-tag", action="store", type=str,
+                      default='',
+                      help="The slide tag, used to differentiate long slides")
 
-  parser.add_option("-n", "--grb-name", action="store", type="string",\
-                     default=None, help="GRB name, such as 090802 "+\
+  parser.add_argument("-n", "--grb-name", action="store", type=str,
+                      default=None, help="GRB name, such as 090802 "+
                                         "(will be appended to output user tag")
 
-  parser.add_option("-T", "--num-trials", action="store", type="int",\
-                     default=6,\
-                     help="The number of off source trials, default: %default")
+  parser.add_argument("-T", "--num-trials", action="store", type=int,
+                      default=6,
+                      help="The number of off source trials, default: %default")
 
-  parser.add_option("-s", "--segment-length", action="store", type="float",\
-                     default=None,\
-                     help="The length of analysis segments.")
+  parser.add_argument("-s", "--segment-length", action="store", type=float,
+                      default=None,
+                      help="The length of analysis segments")
 
-  parser.add_option("-p", "--pad-data", action="store", type="float",\
-                     default=None,\
-                     help="The length of padding around analysis chunk.")
+  parser.add_argument("-p", "--pad-data", action="store", type=float,
+                      default=None,
+                      help="The length of padding around analysis chunk")
 
-  parser.add_option("-a", "--segment-dir", action="store", type="string",\
-                     help="directory holding buffer, on and off source "+\
-                          "segment files.")
+  parser.add_argument("-a", "--segment-dir", action="store", type=str,
+                      help="directory holding buffer, on and off source "
+                           "segment files")
 
-  parser.add_option("-o", "--output-dir", action="store", type="string",\
-                     default=os.getcwd(), help="output directory, "+\
-                                               "default: %default")
+  parser.add_argument("-o", "--output-dir", action="store", type=str,
+                      default=os.getcwd(), help="output directory, "
+                                                "default: %default")
 
-  parser.add_option("-t", "--slide-cache", action="store",default=None,\
-                    help="Read slide triggers from this cache.")
+  parser.add_argument("-t", "--slide-cache", action="store",default=None,
+                      help="Read slide triggers from this cache")
 
-  parser.add_option("-v", "--verbose", action="store_true", default=False,\
-                     help="verbose output with microsecond timer, "+\
-                          "default: %default")
+  parser.add_argument("-b", "--verbose", action="store_true", default=False,
+                      help="verbose output with microsecond timer, "
+                           "default: %default")
 
-  parser.add_option("-c", "--cache", action="store", type="string",\
-                     default=None, help="read trigger files from this cache.")
+  parser.add_argument("-f", "--input-files", nargs="*", action="store",
+                      required=True, metavar="TRIGGER FILE",
+                      help="read in listed trigger files")
 
-  (opts,args) = parser.parse_args()
+  args = parser.parse_args()
 
-  if not opts.ifo_tag:
+  if not args.ifo_tag:
     parser.error("must provide --ifo-tag")
 
-  if not opts.user_tag:
+  if not args.user_tag:
     parser.error("must provide --user-tag")
 
-  if not opts.cache and not opts.slide_cache:
+  if not args.input_files and not args.slide_cache:
     parser.error("must provide --cache or --slide-cache")
 
-  if not opts.segment_dir:
+  if not args.segment_dir:
     parser.error("must provide --segment-dir")
 
-  return opts,args
+  return args
 
 # =============================================================================
 # Main function
 # =============================================================================
 
-def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
+def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
          timeSlides=None, slideTag=None, segLength=None, padData=None,\
          verbose=False):
 
@@ -160,17 +161,6 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
 
   # get trigger files 
   if verbose: sys.stdout.write("\nFinding files...\n")
-
-  if cacheFile:
-    cache = lal.Cache.fromfile(open(cacheFile, 'r'))
-    cache = cache.sieve(ifos=ifoTag, description=userTag)
-
-    if len(cache)<1:
-      sys.stderr.write("No files found at %d.\n" % elapsed_time())
-      sys.exit(1)
-    else:
-      sys.stdout.write("%d files found at %d.\n"\
-                       % (len(cache), elapsed_time()))
 
   if timeSlides:
     slideCache = lal.Cache.fromfile(open(timeSlides, 'r'))
@@ -226,12 +216,12 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
     trigs['ALL_TIMES'] = lsctables.New(lsctables.MultiInspiralTable,\
                                columns=lsctables.MultiInspiralTable.loadcolumns)
     trigs['ALL_TIMES'].extend(MultiInspiralUtils.ReadMultiInspiralFromFiles(\
-                                                       e.path for e in cache))
+                                                       e for e in trigFiles))
     # This is a softcopy, so adding values to trigs also adds to zerolagtrigs
     zeroLagTrigs = trigs
     # Also load the basic time slide table
-    timeSlideDoc = utils.load_filename((cache[0]).path,
-        gz=( (cache[0]).path ).endswith(".gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
+    timeSlideDoc = utils.load_filename(trigFiles[0],
+        gz=trigFiles[0].endswith(".gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
     timeSlideTable = table.get_table(timeSlideDoc,
           lsctables.TimeSlideTable.tableName)
     segmentTable = table.get_table(timeSlideDoc,
@@ -241,12 +231,13 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   else:
     trigs['ALL_TIMES'] = lsctables.New(lsctables.MultiInspiralTable,\
                                columns=lsctables.MultiInspiralTable.loadcolumns)
-    if cacheFile:
-      inpFiles = [e.path for e in cache]
+    print dir(trigFiles[0])
+    if trigFiles:
+      inpFiles = [e for e in trigFiles]
     else:
       inpFiles = []
-    inpFiles.extend([e.path for e in slideCache])
-    if not cacheFile:
+    inpFiles.extend([e for e in slideCache])
+    if not trigFiles:
       cache = slideCache
     tempTrigs,slideDictList,segmentDict,timeSlideTable,\
         segmentTable,timeSlideSegmentMap = \
@@ -290,8 +281,8 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   #
 
   # get search summary table from old file
-  oldxml   = utils.load_filename(cache[0].path,\
-                                  gz = cache[0].path.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
+  oldxml   = utils.load_filename(trigFiles[0],
+                                  gz = trigFiles[0].endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
   oldSearchSummTable = table.get_table(oldxml, "search_summary")
 
   #
@@ -360,7 +351,9 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   xmldoc.childNodes[-1].appendChild(timeSlideSegmentMap)
 
   # construct new xml file names
-  start, end = cache.to_segmentlistdict().extent_all()
+  print dir(trigFiles[0])
+  start = int(trigFiles[0].split('-')[-2])
+  end = int(trigFiles[0].split('-')[-1].split('.')[0]) + start
   if timeSlides:
     tsUserTag = '%s_TIMESLIDES' %(userTag)
     if grbTag:
@@ -396,22 +389,22 @@ def main(cacheFile, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
 
 if __name__=='__main__':
 
-  opts, args = parse_command_line()
+  args = parse_command_line()
 
-  outdir    = os.path.abspath(opts.output_dir)
-  segdir    = os.path.abspath(opts.segment_dir)
-  ifoTag    = opts.ifo_tag
-  userTag   = opts.user_tag
-  cacheFile = opts.cache
-  GRBname   = opts.grb_name
-  numTrials = opts.num_trials
-  timeSlides = opts.slide_cache
-  slideTag = opts.slide_tag
-  segLength = opts.segment_length
-  padData = opts.pad_data
-  verbose   = opts.verbose
+  outdir    = os.path.abspath(args.output_dir)
+  segdir    = os.path.abspath(args.segment_dir)
+  ifoTag    = args.ifo_tag
+  userTag   = args.user_tag
+  trigFiles = args.input_files
+  GRBname   = args.grb_name
+  numTrials = args.num_trials
+  timeSlides = args.slide_cache
+  slideTag = args.slide_tag
+  segLength = args.segment_length
+  padData = args.pad_data
+  verbose   = args.verbose
 
-  main(cacheFile, ifoTag, userTag, segdir, outdir,\
+  main(trigFiles, ifoTag, userTag, segdir, outdir,\
        grbTag=GRBname, numTrials=numTrials, timeSlides=timeSlides,\
        slideTag=slideTag, segLength=segLength,padData=padData,verbose=verbose)
   if verbose: sys.stdout.write("Done at %d.\n" % (elapsed_time()))
