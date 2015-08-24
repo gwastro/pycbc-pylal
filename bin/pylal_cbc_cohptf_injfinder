@@ -208,8 +208,7 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   for injFile in injFiles:
 
     num = int(injFile.rsplit('SPLIT', 1)[-1].split('-')[0])
-    currTrigFiles = [f for f in trigFiles if '_SPLIT%d-' % num in f]
-    print currTrigFiles
+    currTrigFiles = [f for f in trigFiles if '_SPLIT%d_' % num in f]
 
     if len(currTrigFiles) == 0:
       sys.stdout.write("WARNING: cannot find any files matching "+\
@@ -309,20 +308,18 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   xmldoc = append_process_params(xmldoc, sys.argv, __version__, __date__)
 
   # get search summary table from old file
-  oldxml   = utils.load_filename(exampleFile.path,\
-                                  gz = exampleFile.path.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
+  oldxml   = utils.load_filename(exampleFile,\
+                                  gz = exampleFile.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
   oldSearchSummTable = table.get_table(oldxml, "search_summary")
   xmldoc.childNodes[-1].appendChild(oldSearchSummTable)
 
   # construct output filename
-  ifoTag = exampleFile.observatory
-  start, end = trigcache.to_segmentlistdict().extent_all()
-
-  userTag = injcache[0].description.rsplit('_', 1)[0]
+  start = int(trigFiles[0].split('-')[-2])
+  end = int(trigFiles[0].split('-')[-1].split('.')[0]) + start
+  
+  userTag = injFiles[0].split('-')[1].rsplit('_', 1)[0]
   xmlFile = '%s/%s-%s_FOUND-%d-%d.xml'\
             % (outdir, ifoTag, userTag, start, end-start)
-
-  start,end = map(int, exampleFile.segment)
 
   # write found injections
   xmldoc.childNodes[-1].appendChild(foundTrigs)
@@ -343,8 +340,8 @@ if __name__=='__main__':
   
   args = parse_command_line()
   
-  trig_files  = os.path.abspath(args.input_files)
-  inj_files   = os.path.abspath(args.inj_files)
+  trig_files  = args.input_files
+  inj_files   = args.inj_files
   excludes    = map(os.path.abspath, args.exclude_segments)
   timeWindow  = args.time_window
   outdir      = os.path.abspath(args.output_dir)
