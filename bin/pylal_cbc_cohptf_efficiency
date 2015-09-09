@@ -737,15 +737,14 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
           'Rec. Dec', 'SNR', 'Chi^2', 'Bank veto', 'Auto veto', 'Null SNR'] +\
          ['%s SNR' % ifo for ifo in ifos ] + ['BestNR']
     td = [] 
- 
+
     for i,bin in enumerate(massBins):
       if loudOnBestNRTrigs[bin[0]]:
         trig = loudOnBestNRTrigs[bin[0]]
         numTrialsLouder = 0
         for slideID in range(numSlides):
-          numTrialsLouder = len(timeBinVetoMaxBestNR[slideID][i]\
-                     [timeBinVetoMaxBestNR[slideID][i] > loudOnBestNR[bin[0]]] )
-
+          numTrialsLouder += sum(timeBinVetoMaxBestNR[slideID][i] > \
+                                 loudOnBestNR[bin[0]])
         FAP = numTrialsLouder/totalTrials
         loudOnFAP[bin[0]] = FAP
         d = ['%s-%s' % tuple(bin), FAP, trig.get_end(),\
