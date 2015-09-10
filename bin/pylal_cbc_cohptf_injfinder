@@ -206,9 +206,10 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   exampleFile = None
 
   for injFile in injFiles:
-
-    num = int(injFile.rsplit('SPLIT', 1)[-1].split('-')[0])
-    currTrigFiles = [f for f in trigFiles if '_SPLIT%d_' % num in f]
+    split_str = [s for s in injFile.split('-')[1].split('_') \
+                 if ('SPLIT' in s and s[-1].isdigit())]
+    num = int(split_str[0].replace('SPLIT', ''))
+    currTrigFiles = [f for f in trigFiles if '_SPLIT%d' % num in f]
 
     if len(currTrigFiles) == 0:
       sys.stdout.write("WARNING: cannot find any files matching "+\
