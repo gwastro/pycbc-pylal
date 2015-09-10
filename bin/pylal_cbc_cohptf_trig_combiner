@@ -351,7 +351,6 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   xmldoc.childNodes[-1].appendChild(timeSlideSegmentMap)
 
   # construct new xml file names
-  print dir(trigFiles[0])
   start = int(trigFiles[0].split('-')[-2])
   end = int(trigFiles[0].split('-')[-1].split('.')[0]) + start
   if timeSlides:
