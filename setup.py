@@ -68,7 +68,7 @@ def write_build_info():
     pylal/git_version.py.
     """
     date = branch = tag = author = committer = status = builder_name = build_date = ""
-    id = "1.0.dev0"
+    id = "0.9.4"
     
     try:
         v = gvcsi.generate_git_version_info()
@@ -118,7 +118,8 @@ setup(
     author = 'Ligo Virgo Collaboration - PyCBC team',
     author_email = 'alex.nitz@ligo.org',
     url = 'https://github.com/ligo-cbc/pycbc-pylal',
-    release = False,
+    download_url = 'https://github.com/duncan-brown/pycbc-pylal/archive/v0.9.4.tar.gz',
+    release = True,
     description = "legacy support python ligo algorithm library",
     license = "See file LICENSE",
     cmdclass = {'install' : pylal_install,},
