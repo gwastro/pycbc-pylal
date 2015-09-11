@@ -218,6 +218,60 @@ setup(
             runtime_library_dirs = lal_pkg_config.libdirs + lalinspiral_pkg_config.libdirs,
             extra_compile_args = lal_pkg_config.extra_cflags
         ),
+        Extension(
+            "pylal.xlal.datatypes.complex16frequencyseries",
+            ["src/xlal/datatypes/complex16frequencyseries.c"],
+            include_dirs = lal_pkg_config.incdirs + [numpy_get_include(), "src/xlal/datatypes"],
+            libraries = lal_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
+        Extension(
+            "pylal.xlal.datatypes.complex16timeseries",
+            ["src/xlal/datatypes/complex16timeseries.c"],
+            include_dirs = lal_pkg_config.incdirs + [numpy_get_include(), "src/xlal/datatypes"],
+            libraries = lal_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
+        Extension(
+            "pylal.xlal.datatypes.real8frequencyseries",
+            ["src/xlal/datatypes/real8frequencyseries.c"],
+            include_dirs = lal_pkg_config.incdirs + [numpy_get_include(), "src/xlal/datatypes"],
+            libraries = lal_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
+        Extension(
+            "pylal.xlal.datatypes.real8timeseries",
+            ["src/xlal/datatypes/real8timeseries.c"],
+            include_dirs = lal_pkg_config.incdirs + [numpy_get_include(), "src/xlal/datatypes"],
+            libraries = lal_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
+        Extension(
+            "pylal._spawaveform",
+            ["src/_spawaveform.c"],
+            include_dirs = lal_pkg_config.incdirs + lalinspiral_pkg_config.incdirs + [numpy_get_include()],
+            libraries = lal_pkg_config.libs + lalinspiral_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs + lalinspiral_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs + lalinspiral_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
+        Extension(
+            "pylal.inspiral_metric",
+            ["src/inspiral_metric.c", "src/xlal/misc.c"],
+            include_dirs = lal_pkg_config.incdirs + lalinspiral_pkg_config.incdirs + ["src/xlal/", "src/xlal/datatypes/"],
+            libraries = lal_pkg_config.libs + lalinspiral_pkg_config.libs,
+            library_dirs = lal_pkg_config.libdirs + lalinspiral_pkg_config.libdirs,
+            runtime_library_dirs = lal_pkg_config.libdirs + lalinspiral_pkg_config.libdirs,
+            extra_compile_args = lal_pkg_config.extra_cflags
+        ),
     ],
     scripts = [
         os.path.join("bin", "ligolw_cbc_align_total_spin"),
