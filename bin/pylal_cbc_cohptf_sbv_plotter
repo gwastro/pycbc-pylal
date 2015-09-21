@@ -297,7 +297,6 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
   trigAmp       = dict((amp,\
                         numpy.asarray(trigs.get_column('amp_term_%d' % amp)))\
                        for amp in amplitudes)
-  print(trigAmp)
   trigRelAmp1    = numpy.sqrt((trigAmp[1]**2 + trigAmp[2]**2)/\
                               (trigAmp[3]**2 + trigAmp[4]**2))
   trigGammaR     = trigAmp[1] - trigAmp[4]
@@ -315,8 +314,6 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
   # get antenna response based parameters
   trigLongitude = numpy.degrees(trigs.get_column('ra'))
   trigLatitude  = numpy.degrees(trigs.get_column('dec'))
-  print(trigLongitude)
-  print(trigLatitude)
   fResp = dict((ifo, numpy.empty(numtrigs)) for ifo in ifos)
   for i in xrange(numtrigs):
     # calculate fResp for each IFO is we haven't done so already

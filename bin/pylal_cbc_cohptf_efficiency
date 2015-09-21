@@ -864,6 +864,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     # zero FAP
     gFoundMchirp      = foundInjMchirp[zeroFAP]
     gFoundMtot        = foundInjMtot[zeroFAP]
+    gFoundm1          = foundInjm1[zeroFAP]
+    gFoundm2          = foundInjm2[zeroFAP]
     gFoundEffSiteDist = dict((ifo, foundInjEffSiteDist[ifo][zeroFAP])\
                              for ifo in sites)
     gFoundEffDist     = foundInjEffDist[zeroFAP]
@@ -871,6 +873,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     gFoundDist        = foundInjDist[zeroFAP]
     gFoundTime        = foundInjTime[zeroFAP]
     gFoundSkyAngle    = foundSkyAngle[zeroFAP]
+
+    gFoundSpin1x      = foundInjSpin1x[zeroFAP]
+    gFoundSpin1y      = foundInjSpin1y[zeroFAP]
+    gFoundSpin1z      = foundInjSpin1z[zeroFAP]
+    gFoundSpin2x      = foundInjSpin2x[zeroFAP]
+    gFoundSpin2y      = foundInjSpin2y[zeroFAP]
+    gFoundSpin2z      = foundInjSpin2z[zeroFAP]
 
     # nonzero FAP
     gIFARMchirp       = foundInjMchirp[nonzeroFAP]
@@ -1549,7 +1558,81 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig("%s/found_missed_injections_effdist_time.png" % outdir)
     plt.close()
+    
+    # Injections vs. spins plot
+    fig = plt.figure()
+    ax = fig.gca()
+    ax.grid()
+    foundInjSpin1 = np.sqrt(foundInjSpin1x**2 + foundInjSpin1y**2 + \
+                            foundInjSpin1z**2)
+    foundInjSpin2 = np.sqrt(foundInjSpin2x**2 + foundInjSpin2y**2 + \
+                            foundInjSpin2z**2)
+    if len(gFoundSpin1x):
+      gFoundSpin1 = np.sqrt(gFoundSpin1x**2 + gFoundSpin1y**2 + \
+                            gFoundSpin1z**2)
+      gFoundSpin2 = np.sqrt(gFoundSpin2x**2 + gFoundSpin2y**2 + \
+                            gFoundSpin2z**2)
+      ax.scatter(gFoundSpin1, gFoundSpin2, c="g", marker="x",
+                 edgecolors="g")
+    if len(gIFARSpin1x):
+      gIFARSpin1 = np.sqrt(gIFARSpin1x**2 + gIFARSpin1y**2 + gIFARSpin1z**2)
+      gIFARSpin2 = np.sqrt(gIFARSpin2x**2 + gIFARSpin2y**2 + gIFARSpin2z**2)
+      p = ax.scatter(gIFARSpin1, gIFARSpin2, c=gIFARStat,
+                     norm=colors.Normalize(0, 1, clip=False), marker="o",
+                     edgecolors="none")
+    if len(missedInjSpin1x):
+      missedInjSpin1 = np.sqrt(missedInjSpin1x**2 + missedInjSpin1y**2 + \
+                               missedInjSpin1z**2)
+      missedInjSpin2 = np.sqrt(missedInjSpin2x**2 + missedInjSpin2y**2 + \
+                               missedInjSpin2z**2)
+      ax.scatter(missedInjSpin1, missedInjSpin2, c="k", marker="x",
+                 edgecolors="k")
+    if len(gMissed2Spin1x):
+      gMissed2Spin1 = np.sqrt(gMissed2Spin1x**2 + gMissed2Spin1y**2 + \
+                              gMissed2Spin1z**2)
+      gMissed2Spin2 = np.sqrt(gMissed2Spin2x**2 + gMissed2Spin2y**2 + \
+                              gMissed2Spin2z**2)
+      ax.scatter(gMissed2Spin1, gMissed2Spin2, c="r", marker="x",
+                 edgecolors="r")
+    if len(gIFARSpin1):
+      cb = ax.figure.colorbar(p)
+      cb.ax.set_ylabel("FAP")
+    ax.set_xlabel("Spin on 1st binary component")
+    ax.set_ylabel("Spin on 2nd binary component")
+    ax.set_title("Injection recovery with respect to component spins")
+    ax.set_xlim([0, np.ceil(10 * max(missedInjSpin1.max(),
+                                     foundInjSpin1.max())) / 10])
+    ax.set_ylim([0, np.ceil(10 * max(missedInjSpin2.max(),
+                                     foundInjSpin2.max())) / 10])
+    fig.savefig("%s/found_missed_injections_spins.png" % outdir)
+    plt.close()
 
+    # Injections vs. spins plot
+    fig = plt.figure()
+    ax = fig.gca()
+    ax.grid()
+    if len(gFoundm1):
+      ax.scatter(gFoundm1, gFoundm2, c="g", marker="x", edgecolors="g")
+    if len(gIFARm1):
+      p = ax.scatter(gIFARm1, gIFARm2, c=gIFARStat, edgecolors="none",
+                     norm=colors.Normalize(0, 1, clip=False), marker="o")
+    if len(missedInjm1):
+      ax.scatter(missedInjm1, missedInjm2, c="k", marker="x", edgecolors="k")
+    if len(gMissed2m1):
+      ax.scatter(gMissed2m1, gMissed2m2, c="r", marker="x", edgecolors="r")
+    if len(gIFARm1):
+      cb = ax.figure.colorbar(p)
+      cb.ax.set_ylabel("FAP")
+    ax.set_xlabel("Mass of 1st binary component")
+    ax.set_ylabel("Mass of 2nd binary component")
+    ax.set_title("Injection recovery with respect to component masses")
+    #ax.set_xlim([0, np.ceil(10 * max(missedInjm1.max(),
+    #                                 foundInjm1.max())) / 10])
+    #ax.set_ylim([0, np.ceil(10 * max(missedInjm2.max(),
+    #                                 foundInjm2.max())) / 10])
+    fig.savefig("%s/found_missed_injections_masses.png" % outdir)
+    plt.close()
+    
     sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
                  'T':'TAMA' }
 
