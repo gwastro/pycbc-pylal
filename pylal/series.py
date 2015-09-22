@@ -164,7 +164,13 @@ def build_REAL8FrequencySeries(series, comment = None):
 	elem.appendChild(ligolw.Time.from_gps(series.epoch, Name = u"epoch"))
 	elem.appendChild(ligolw_param.from_pyvalue(u"f0", series.f0, unit = LALUnit("s^-1")))
 	data = series.data
-	data = numpy.row_stack((numpy.arange(0, len(data)) * series.deltaF, data))
+        try:
+            # Support both the pylal-wrapped class, and the direct lal class
+            datalength = data.length
+            data = data.data
+        except:
+            datalength = len(data)
+	data = numpy.row_stack((numpy.arange(0, datalength) * series.deltaF, data))
 	a = ligolw_array.from_array(series.name, data, dim_names = (u"Frequency", u"Frequency,Real"))
 	a.Unit = series.sampleUnits
 	dim0 = a.getElementsByTagName(ligolw.Dim.tagName)[0]
