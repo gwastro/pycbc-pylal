@@ -1296,6 +1296,23 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if verbose: sys.stdout.write("%d triggers written to file at %d.\n"\
                                  % (len(td), elapsed_time()))
 
+    t_missed = zip(*[gMissed2Dist] + \
+                    [gMissed2EffSiteDist[ifo] for ifo in sites] + \
+                    [gMissed2m1, gMissed2m2, gMissed2Mchirp, gMissed2Recm1,
+                     gMissed2Recm2, gMissed2RecMchirp, gMissed2Inc, gMissed2RA,
+                     gMissed2Dec, gMissed2RecRA, gMissed2RecDec, gMissed2SNR,
+                     gMissed2Chisq, gMissed2Bank, gMissed2Auto,
+                     gMissed2Null] + \
+                    [gMissed2SnglSNR[ifo] for ifo in ifos] + \
+                    [gMissed2DetStat, gMissed2Spin1x, gMissed2Spin1y,
+                     gMissed2Spin1z, gMissed2Spin2x, gMissed2Spin2y,
+                     gMissed2Spin2z])
+    t_missed.sort(key=lambda elem: elem[0])
+    t_missed = [[i] + list(t_missed[i]) for i in range(missed.sum())]
+    file = open("%s/missed_found_triggers.html" % outdir, "w")
+    file.write(dqHTMLUtils.write_table(markup.page(), th, t_missed)())
+    file.close()
+
   # ==========
   # make plots
   # ==========
@@ -1626,10 +1643,10 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlabel("Mass of 1st binary component")
     ax.set_ylabel("Mass of 2nd binary component")
     ax.set_title("Injection recovery with respect to component masses")
-    #ax.set_xlim([0, np.ceil(10 * max(missedInjm1.max(),
-    #                                 foundInjm1.max())) / 10])
-    #ax.set_ylim([0, np.ceil(10 * max(missedInjm2.max(),
-    #                                 foundInjm2.max())) / 10])
+    ax.set_xlim([np.floor(10 * min(missedInjm1.min(), foundInjm1.min())) / 10,
+                 np.ceil(10 * max(missedInjm1.max(), foundInjm1.max())) / 10])
+    ax.set_ylim([np.floor(10 * max(missedInjm2.min(), foundInjm2.min())) / 10,
+                 np.ceil(10 * max(missedInjm2.max(), foundInjm2.max())) / 10])
     fig.savefig("%s/found_missed_injections_masses.png" % outdir)
     plt.close()
     
