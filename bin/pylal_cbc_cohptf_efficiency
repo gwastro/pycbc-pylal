@@ -157,7 +157,7 @@ def parse_command_line():
                                              "efficiency calculation")
 
   effopts.add_option("-U", "--upper-inj-dist", action="store",\
-                     type="float",default=100,help="The upper distance of "+\
+                     type="float",default=1000,help="The upper distance of "+\
                           "the injections, if used. default: %default")
   effopts.add_option("-L", "--lower-inj-dist", action="store",\
                      type="float",default=0,help="The lower distance of "+\
