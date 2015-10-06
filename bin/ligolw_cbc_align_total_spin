@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2010  Nickolas Fotopoulos
+# Copyright (C) 2010  Nickolas Fotopoulos, Stephen Fairhurst
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -37,12 +37,8 @@ from glue.ligolw import table
 from glue.ligolw import utils
 from glue.ligolw.utils import process as ligolw_process
 from pylal import git_version
-from pylal import sphericalutils as su
-from pylal import inject
-from lal import PI as LAL_PI
-from lal import TWOPI as LAL_TWOPI
-from lal import MTSUN_SI as LAL_MTSUN_SI
-
+import lal
+from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
 
 #
 # Utility functions
@@ -55,7 +51,7 @@ def eff_distance(detector, sim):
     Ref: Duncan's PhD thesis, eq. (4.3) on page 57, implemented in
          LALInspiralSiteTimeAndDist in SimInspiralUtils.c:594.
     """
-    f_plus, f_cross = inject.XLALComputeDetAMResponse(detector.response,
+    f_plus, f_cross = lal.ComputeDetAMResponse(detector.response,
         sim.longitude, sim.latitude, sim.polarization, sim.end_time_gmst)
     ci = math.cos(sim.inclination)
     s_plus = -(1 + ci * ci)
@@ -86,43 +82,23 @@ def alignTotalSpin(iota, s1, s2, m1, m2, f_lower):
     Rigidly rotate binary so that the total angular momentum has the given
     inclination (iota) instead of the orbital angular momentum. Return
     the new inclination, s1, and s2. s1 and s2 are dimensionless spin.
-
-    Adapted from Michal Was's implementation in the X Pipeline:
-    https://geco.phys.columbia.edu/xpipeline/browser/trunk/utilities/alignTotalSpin.m
+    Note: the spins are assumed to be given in the frame defined by the orbital
+    angular momentum.  
     """
-    m1sq = m1 * m1
-    m2sq = m2 * m2
-    # Rigidly rotate (S1, S2) around L into the XZ plane
-    # NB: inspinj arranges L to initially be in the XZ plane
-    Lhat = np.array([np.sin(iota), 0, np.cos(iota)])
-    e1 = np.cross(Lhat, [0, 1, 0])
-    e2 = np.cross(Lhat, e1)
-    S = m1sq * s1 + m2sq * s2  # give units
-    phiOutPlane = np.arctan2(np.dot(S, e2), np.dot(S, e1))
-    news1 = su.rotate_about_axis(s1, Lhat, -phiOutPlane)
-    news2 = su.rotate_about_axis(s2, Lhat, -phiOutPlane)
 
-    # Compute total angular momentum, which now must be in the XZ plane
-    angmomfac = m1 * m2 * (LAL_PI * LAL_MTSUN_SI * (m1 + m2) * f_lower)**(-1.0/3.0)
-    J = angmomfac * Lhat + m1sq * news1 + m2sq * news2
-    iotaJ = np.arctan2(J[0], J[2])
+    # Calculate the quantities required by SimInspiralTransformPrecessingNewInitialConditions
+    thetaJN = iota
+    phiJL = np.pi
+    l = np.array([0,0,1.])
+    theta1 = np.arccos(np.dot(s1, l)/np.linalg.norm(s1))
+    theta2 = np.arccos(np.dot(s2, l)/np.linalg.norm(s2))
+    phi12 = np.arccos(np.dot(s1[:2], s2[:2])/np.linalg.norm(s1[:2])/np.linalg.norm(s2[:2]))
 
-    # Rigidly rotate (L, S1, S2) around the Y axis so that J has incl. iota.
-    # This is a rotation of the amount (iota - iotaJ).
-    newIota = iota + (iota - iotaJ)
-    news1 = su.rotate_about_axis(news1, [0, 1, 0], iota - iotaJ)
-    news2 = su.rotate_about_axis(news2, [0, 1, 0], iota - iotaJ)
-
-    # Sanity check: J has the desired inclination
-    Jf = angmomfac * np.array([np.sin(newIota), 0, np.cos(newIota)]) \
-        + m1sq * news1 + m2sq * news2
-    assert abs(iota - np.arctan2(np.sqrt(Jf[0] * Jf[0] + Jf[1] * Jf[1]),
-                                 Jf[2])) < 1e-4
-
-    # Sanity check: J has its original magnitude
-    J0 = angmomfac * np.array([np.sin(iota), 0, np.cos(iota)]) \
-        + m1sq * s1 + m2sq * s2
-    assert abs(np.dot(J0, J0) - np.dot(Jf, Jf)) < angmomfac*angmomfac * 1e-4
+    news1 = np.zeros(3)
+    news2 = np.zeros(3)
+    newIota, news1[0], news1[1], news1[2], news2[0], news2[1], news2[2] = \
+        SimInspiralTransformPrecessingNewInitialConditions(thetaJN, phiJL, theta1, theta2, 
+        phi12, np.linalg.norm(s1), np.linalg.norm(s2), m1 * lal.MSUN_SI, m2 * lal.MSUN_SI, f_lower)
 
     return newIota, news1, news2
 
@@ -162,11 +138,11 @@ process = ligolw_process.register_to_xmldoc(siminsp_doc,
 # Do the work
 #
 site_location_list = [\
-    ("h", inject.cached_detector["LHO_4k"]),
-    ("l", inject.cached_detector["LLO_4k"]),
-    ("g", inject.cached_detector["GEO_600"]),
-    ("t", inject.cached_detector["TAMA_300"]),
-    ("v", inject.cached_detector["VIRGO"])]
+    ("h", lal.CachedDetectors[lal.LALDetectorIndexLHODIFF]),
+    ("l", lal.CachedDetectors[lal.LALDetectorIndexLLODIFF]),
+    ("g", lal.CachedDetectors[lal.LALDetectorIndexGEO600DIFF]),
+    ("l", lal.CachedDetectors[lal.LALDetectorIndexTAMA300DIFF]),
+    ("l", lal.CachedDetectors[lal.LALDetectorIndexVIRGODIFF])]
 for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     # rotate
     s1, s2 = get_spins(sim)
@@ -175,7 +151,7 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     sim.inclination = newIota
     set_spins(sim, news1, news2)
 
-    # update arrival times and effective distances at the sites
+    # update effective distances at the sites
     for site, detector in site_location_list:
         setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
 
