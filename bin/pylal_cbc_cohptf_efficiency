@@ -1364,7 +1364,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     lineColors = ['r','b','g','m','c']
   
     file = open("%s/injection_recovery.html" % outdir, "w")
-
+    
     finjs         = foundmaxBestNR.sum(0)[:-1] / numMCInjs
     totalinjs     = numInjections.sum(0)[:-1] / numMCInjs
     finjsNoMC     = foundmaxBestNRNoMC.sum(0)[:-1]
@@ -1405,13 +1405,16 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     # plot efficiency
     fig = plt.figure()
     ax = fig.gca()
-    ax.plot(distPlotVals, (finjsNoMC/totalinjsNoMC), 'g-')
-    ax.plot(distPlotVals, (finjs/totalinjs), 'r-')
-    ax.errorbar(distPlotVals, (finjsNoMC/totalinjsNoMC),\
-                 yerr=[yerr_lowNoMC,yerr_highNoMC], c = 'g')
-    ax.errorbar(distPlotVals, (finjs/totalinjs),\
-                 yerr=[yerr_lowMC,yerr_highMC], c = 'r')
-    ax.legend(['No marginalisation','Marginalised'])
+    ax.plot(distPlotVals, (finjsNoMC/totalinjsNoMC), 'g-',
+            label='No marginalisation')
+    ax.errorbar(distPlotVals, (finjsNoMC/totalinjsNoMC),
+                yerr=[yerr_lowNoMC,yerr_highNoMC], c = 'g')
+    marg_eff = finjs / totalinjs
+    if not np.isnan(marg_eff.sum()):
+        ax.plot(distPlotVals, marg_eff, 'r-', label='Marginalised')
+        ax.errorbar(distPlotVals, marg_eff, yerr=[yerr_lowMC,yerr_highMC],
+                    c = 'r')
+    ax.legend()
     ax.grid()
     ax.set_ylim([0,1])
     ax.set_xlim(0, 2.*upperDist - lowerDist)
@@ -1471,10 +1474,17 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     yerr_high     = yerr_high - (finjs/totalinjs)
 
     redEfficiency = (finjs/totalinjs) - (yerr_low) * scipy.stats.norm.isf(0.1)
-
-    ax.plot(distPlotVals, (finjsNoMC/totalinjsNoMC),'g-')
-    ax.plot(distPlotVals, (finjs/totalinjs),'r-')
-    ax.plot(distPlotVals, redEfficiency, 'm-')
+    ax.plot(distPlotVals, (finjsNoMC/totalinjsNoMC), 'g-',
+            label='No marginalisation')
+    ax.errorbar(distPlotVals, (finjsNoMC/totalinjsNoMC),
+                yerr=[yerr_lowNoMC,yerr_highNoMC], c = 'g')
+    marg_eff = finjs / totalinjs
+    if not np.isnan(marg_eff.sum()):
+        ax.plot(distPlotVals, marg_eff ,'r-', label='Marginalised')
+        ax.errorbar(distPlotVals, marg_eff, yerr=[yerr_low,yerr_high], c = 'r')
+    if not np.isnan(redEfficiency.sum()):
+        ax.plot(distPlotVals, redEfficiency, 'm-',
+                label='Inc. counting errors')
 
     # Print efficiency curve to file
     file = open( "%s/efficiency_curve.txt" % outdir, "w" )
@@ -1482,13 +1492,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       print >>file, distPlotVals[i],redEfficiency[i]
     file.close()
 
-    ax.errorbar(distPlotVals, (finjsNoMC/totalinjsNoMC),\
-                 yerr=[yerr_lowNoMC,yerr_highNoMC], c = 'g')
-    ax.errorbar(distPlotVals, (finjs/totalinjs),\
-                 yerr=[yerr_low,yerr_high], c = 'r')
     ax.set_ylim([0,1])
     ax.grid()
-    ax.legend(['No marginalisation','Marginalised','Inc. counting errors'])
+    ax.legend()
     ax.get_legend().get_frame().set_alpha(0.5)
     ax.grid()
     ax.set_ylim([0,1])
@@ -1501,12 +1507,19 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     # Print 90% exclusion distance to file and calculate MC error
     eff_idx = np.where(redEfficiency<0.9)[0]
+    if len(eff_idx) == 0:
+        greenEfficiency = (finjsNoMC / totalinjsNoMC)
+        excl_efficiency = greenEfficiency
+        eff_idx = np.where(greenEfficiency < 0.9)[0]
+    else:
+        excl_efficiency = redEfficiency
+    print eff_idx
     if len(eff_idx) and eff_idx[0]!=0:
       i = eff_idx[0]
       d     = distPlotVals[i]
       d_low = distPlotVals[i-1]
-      e     = redEfficiency[i]
-      e_low = redEfficiency[i-1]
+      e     = excl_efficiency[i]
+      e_low = excl_efficiency[i-1]
 
       excl_dist = d + (e - 0.9) * (d - d_low) / (e_low - e)
     else:
