@@ -33,6 +33,7 @@ import time
 import copy
 start = int(time.time()*10**6)
 elapsed_time = lambda: int(time.time()*10**6-start)
+import logging
 
 import os,sys,matplotlib,numpy as np,re,copy,optparse
 matplotlib.use('Agg')
@@ -972,6 +973,19 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     # set the sigma values
     injSigma     = foundTrigs.get_sigmasqs()
+
+    # if the sigmasqs aren't populated, we can still do calibration errors,
+    # but only in the 1-detector case
+    for ifo in ifos:
+        if sum(injSigma[ifo] == 0):
+            logging.warn('%s: sigmasq not set for at least one trigger', ifo)
+        if sum(injSigma[ifo] != 0) == 0: 
+            logging.warn('%s: sigmasq not set for any trigger', ifo)
+            if len(ifos) == 1:
+                logging.warn('This is a single ifo analysis,'
+                             ' setting sigmasq to unity for all triggers')
+                injSigma[ifo][:] = 1.
+
     fResp        = dict((ifo, np.asarray([get_f_resp(inj)[ifo] \
                         for inj in foundInjs]))  for ifo in ifos)
 
@@ -1819,8 +1833,11 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
 if __name__=='__main__':
 
-  opts, args = parse_command_line()
+  log_fmt = '%(asctime)s %(message)s'
+  log_date_fmt = '%Y-%m-%d %H:%M:%S'
+  logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=log_date_fmt)
 
+  opts, args = parse_command_line()
   segdir       = opts.segment_dir
   outdir       = opts.output_path
   trigFile     = opts.offsource_file
