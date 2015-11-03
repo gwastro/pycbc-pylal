@@ -17,15 +17,13 @@
 """
 Given an XML file with a SimInspiralTable, add a random offset to each
 injection's sky locations.
-
-Usage: %prog --jitter-sigma-deg JSIG --output-file OUTFILE siminsp_fname
 """
 from __future__ import division
 
 __author__ = "Nickolas Fotopoulos <nvf@gravity.phys.uwm.edu>"
 
 import math
-import optparse
+import argparse
 import random
 import sys
 
@@ -90,25 +88,38 @@ def eff_distance(detector, sim):
 # Parse commandline
 #
 
-parser = optparse.OptionParser(usage=__doc__, version=git_version.verbose_msg)
-parser.add_option("--jitter-sigma-deg", metavar="JSIG", type="float",
-    help="jitter injections with a Gaussian of standard deviation JSIG degrees")
-parser.add_option("--apply-fermi-error", action="store_true",default=False,
-    help="applies the statistical error from Fermi according to "\
-    "https://wiki.ligo.org/foswiki/bin/view/Bursts/S6VSR2InjectionSkyPositionJitter")
-parser.add_option("--output-file", metavar="OUTFILE",
-    help="name of output XML file")
-opts, args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument("-v", "--version", action="version",
+                    version=git_version.verbose_msg)
+parser.add_argument("--input-file", metavar="INFILE", required=True,
+                    help="path of input XML file")
+parser.add_argument("--output-file", metavar="OUTFILE", required=True,
+                    help="path of output XML file")
 
-# everything is required
-if (opts.jitter_sigma_deg is None) or \
-   (opts.output_file is None) or \
-   (len(args) != 1):
-    parser.print_usage()
-    sys.exit(2)
+s_group = parser.add_argument_group("Sky position arguments")
+s_group.add_argument("--jitter-sigma-deg", metavar="JSIG", type=float,
+                     default=0,
+                     help="jitter injections with a Gaussian of standard "
+                          "deviation JSIG degrees")
+s_group.add_argument("--apply-fermi-error", action="store_true",
+                     help="applies the statistical error from Fermi according "
+                          "to https://wiki.ligo.org/foswiki/bin/view/Bursts/"
+                          "S6VSR2InjectionSkyPositionJitter")
 
-siminsp_fname = args[0]
-jitter_sigma = np.radians(opts.jitter_sigma_deg)
+d_group = parser.add_argument_group("Distance arguments")
+d_group.add_argument("--d-distr", default="gaussian",
+                     choices=["gaussian", "lognormal"],
+                     help="The distribution from which to draw the random "
+                          "jittered ditance")
+d_group.add_argument("--phase-error", type=float, default=0,
+                     help="Phase calibration uncertainty (degrees)")
+d_group.add_argument("--amplitude-error", type=float, default=0,
+                     help="Amplitude calibration uncertainty (percent)")
+
+args = parser.parse_args()
+
+siminsp_fname = args.input_file
+jitter_sigma = np.radians(args.jitter_sigma_deg)
 
 # for details on those parameters see 
 # https://wiki.ligo.org/foswiki/bin/view/Bursts/S6VSR2InjectionSkyPositionJitter
@@ -127,7 +138,7 @@ siminsp_doc = utils.load_filename(siminsp_fname,
 # Prepare process table with information about the current program
 process = ligolw_process.register_to_xmldoc(siminsp_doc,
     "ligolw_cbc_jitter_skyloc",
-    opts.__dict__, version=git_version.tag or git_version.id,
+    args.__dict__, version=git_version.tag or git_version.id,
     cvs_repository="lalsuite", cvs_entry_time=git_version.date)
 
 
@@ -144,7 +155,7 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
 
     # The Fisher distribution is the appropriate generalization of a
     # Gaussian on a sphere.
-    if opts.apply_fermi_error:
+    if args.apply_fermi_error:
       jitter_sig = np.where(random.random()<0.3, jitter_fermi30, jitter_fermi70)      
     else:
       jitter_sig = jitter_sigma
@@ -162,10 +173,22 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
         setattr(sim, site + "_end_time_ns", site_end.gpsNanoSeconds)
         setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
 
+#
+# Compute new injected distances
+#
+if args.phase_error != 0 or args.amplitude_error != 0:
+    for sim in table.get_table(siminsp_doc,
+                               lsctables.SimInspiralTable.tableName):
+        mu = sim.distance * (1 + 0.5 * np.deg2rad(args.phase_error)**2)
+        sigma = (args.amplitude_error / 100.) * sim.distance
+        if args.d_distr == "gaussian":
+            setattr(sim, "distance", random.gauss(mu, sigma))
+        elif args.d_distr == "lognormal":
+            setattr(sim, "distance", np.log(random.lognormvariate(mu, sigma)))
 
 #
 # Write output
 #
 
 ligolw_process.set_process_end_time(process)
-utils.write_filename(siminsp_doc, opts.output_file)
+utils.write_filename(siminsp_doc, args.output_file)
