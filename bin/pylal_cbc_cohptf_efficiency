@@ -972,6 +972,21 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     # set the sigma values
     injSigma     = foundTrigs.get_sigmasqs()
+    # if the sigmasqs aren't populated, we can still do calibration errors,
+    # but only in the 1-detector case
+    for ifo in ifos:
+        if sum(injSigma[ifo] == 0):
+            if verbose: sys.stdout.write("%s: sigmasq not set for at least "
+                                         "one trigger.\n" % ifo)
+        if sum(injSigma[ifo] != 0) == 0: 
+            if verbose: sys.stdout.write("%s: sigmasq not set for any "
+                                         "trigger.\n" % ifo)
+            if len(ifos) == 1:
+                if verbose: sys.stdout.write("This is a single ifo analysis. "
+                                             "Setting sigmasq to unity for all"
+                                             " triggers.")
+                injSigma[ifo][:] = 1.
+
     fResp        = dict((ifo, np.asarray([get_f_resp(inj)[ifo] \
                         for inj in foundInjs]))  for ifo in ifos)
 
