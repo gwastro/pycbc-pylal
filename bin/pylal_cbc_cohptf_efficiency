@@ -316,7 +316,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   #
 
   # Construct veto list
-  vetoes = {}
+  vetoes = segments.segmentlistdict()
   for ifo in ifos:
     vetoes[ifo] = segments.segmentlist()
 
@@ -331,7 +331,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
   for ifo in ifos:
     vetoes[ifo].coalesce()
-
   #
   # construct trials
   #
@@ -775,16 +774,16 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     sites = [ifo[0] for ifo in ifos]
 
     missedInjs = SimInspiralUtils.ReadSimInspiralFromFiles([missedFile])\
-                     .veto(vetoes)
-  
+            .veto(vetoes.union(vetoes.keys()))
+
     foundInjsNoVeto  = SimInspiralUtils.ReadSimInspiralFromFiles([foundFile])
     foundTrigsNVeto = MultiInspiralUtils.ReadMultiInspiralFromFiles([foundFile])
 
     foundInjs = lsctables.New(lsctables.SimInspiralTable)
     foundTrigs = lsctables.New(lsctables.MultiInspiralTable)
-
+    
     for trig,sim in zip(foundTrigsNVeto,foundInjsNoVeto):
-      if sim.get_end() not in vetoes:
+      if sim.get_end() not in vetoes.union(vetoes.keys()):
         foundInjs.append(sim)
         foundTrigs.append(trig)
   
@@ -984,7 +983,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
             if len(ifos) == 1:
                 if verbose: sys.stdout.write("This is a single ifo analysis. "
                                              "Setting sigmasq to unity for all"
-                                             " triggers.")
+                                             " triggers.\n")
                 injSigma[ifo][:] = 1.
 
     fResp        = dict((ifo, np.asarray([get_f_resp(inj)[ifo] \
@@ -1034,6 +1033,32 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     missedNA         = ['N/A'] * len(missedInjs)
 
+    if len(missedInjm1):
+        minMissedInjm1 = missedInjm1.min()
+        maxMissedInjm1 = missedInjm1.max()
+        minMissedInjm2 = missedInjm2.min()
+        maxMissedInjm2 = missedInjm2.max()
+    else:
+        minMissedInjm1 = 1e3
+        maxMissedInjm1 = 0
+        minMissedInjm2 = 1e3
+        maxMissedInjm2 = 0
+
+    if len(missedInjSpin1x):
+        missedInjSpin1 = np.sqrt(missedInjSpin1x**2 + missedInjSpin1y**2 + \
+                                 missedInjSpin1z**2)
+        missedInjSpin2 = np.sqrt(missedInjSpin2x**2 + missedInjSpin2y**2 + \
+                                 missedInjSpin2z**2)
+        minMissedInjSpin1 = missedInjSpin1.min()
+        maxMissedInjSpin1 = missedInjSpin1.max()
+        minMissedInjSpin2 = missedInjSpin2.min()
+        maxMissedInjSpin2 = missedInjSpin2.max()
+    else:
+        minMissedInjSpin1 = 1
+        maxMissedInjSpin1 = 0
+        minMissedInjSpin2 = 1
+        maxMissedInjSpin2 = 0
+    
     if verbose: sys.stdout.write("%d missed injections analysed at %d.\n"\
                                  % (len(missedInjs), elapsed_time()))
 
@@ -1528,7 +1553,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         eff_idx = np.where(greenEfficiency < 0.9)[0]
     else:
         excl_efficiency = redEfficiency
-    print eff_idx
     if len(eff_idx) and eff_idx[0]!=0:
       i = eff_idx[0]
       d     = distPlotVals[i]
@@ -1626,10 +1650,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                      norm=colors.Normalize(0, 1, clip=False), marker="o",
                      edgecolors="none")
     if len(missedInjSpin1x):
-      missedInjSpin1 = np.sqrt(missedInjSpin1x**2 + missedInjSpin1y**2 + \
-                               missedInjSpin1z**2)
-      missedInjSpin2 = np.sqrt(missedInjSpin2x**2 + missedInjSpin2y**2 + \
-                               missedInjSpin2z**2)
       ax.scatter(missedInjSpin1, missedInjSpin2, c="k", marker="x",
                  edgecolors="k")
     if len(gMissed2Spin1x):
@@ -1639,20 +1659,20 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                               gMissed2Spin2z**2)
       ax.scatter(gMissed2Spin1, gMissed2Spin2, c="r", marker="x",
                  edgecolors="r")
-    if len(gIFARSpin1):
+    if len(gIFARSpin1x):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
     ax.set_xlabel("Spin on 1st binary component")
     ax.set_ylabel("Spin on 2nd binary component")
     ax.set_title("Injection recovery with respect to component spins")
-    ax.set_xlim([0, np.ceil(10 * max(missedInjSpin1.max(),
+    ax.set_xlim([0, np.ceil(10 * max(maxMissedInjSpin1,
                                      foundInjSpin1.max())) / 10])
-    ax.set_ylim([0, np.ceil(10 * max(missedInjSpin2.max(),
+    ax.set_ylim([0, np.ceil(10 * max(maxMissedInjSpin2,
                                      foundInjSpin2.max())) / 10])
     fig.savefig("%s/found_missed_injections_spins.png" % outdir)
     plt.close()
 
-    # Injections vs. spins plot
+    # Injections vs. masses plot
     fig = plt.figure()
     ax = fig.gca()
     ax.grid()
@@ -1671,10 +1691,10 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlabel("Mass of 1st binary component")
     ax.set_ylabel("Mass of 2nd binary component")
     ax.set_title("Injection recovery with respect to component masses")
-    ax.set_xlim([np.floor(10 * min(missedInjm1.min(), foundInjm1.min())) / 10,
-                 np.ceil(10 * max(missedInjm1.max(), foundInjm1.max())) / 10])
-    ax.set_ylim([np.floor(10 * max(missedInjm2.min(), foundInjm2.min())) / 10,
-                 np.ceil(10 * max(missedInjm2.max(), foundInjm2.max())) / 10])
+    ax.set_xlim([np.floor(10 * min(minMissedInjm1, foundInjm1.min())) / 10,
+                 np.ceil(10 * max(maxMissedInjm1, foundInjm1.max())) / 10])
+    ax.set_ylim([np.floor(10 * max(minMissedInjm2, foundInjm2.min())) / 10,
+                 np.ceil(10 * max(maxMissedInjm2, foundInjm2.max())) / 10])
     fig.savefig("%s/found_missed_injections_masses.png" % outdir)
     plt.close()
     
@@ -1874,7 +1894,6 @@ if __name__=='__main__':
   if opts.veto_directory:
      vetoString = ','.join([str(i) for i in range(2,opts.veto_category+1)])
      vetoFiles = glob.glob(opts.veto_directory +'/*CAT[%s]*.xml' %(vetoString))
-
  
   massBins = map(lambda p: map(float, p.split('-')), opts.mass_bins.split(','))
   numMCInjs = opts.num_mc_injections
