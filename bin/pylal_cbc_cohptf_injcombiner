@@ -190,10 +190,10 @@ def main( injCacheFile, outdir, maxIncl , injString , verbose=False ):
   # construct output filename
   ifoTag = foundcache[0].observatory
   start, end = foundcache.to_segmentlistdict().extent_all()
-
   userTag = injcache[0].description.rsplit('_', 2)[0]
   xmlFile = '%s/%s-%s_%s_FILTERED_%d_FOUND-%d-%d.xml'\
-            % ( outdir, ifoTag, userTag, injString, maxIncl, start, end-start )
+            % (outdir, ifoTag, userTag, injString.split(str(int(maxIncl)))[0],
+               maxIncl, start, end-start )
 
   start,end = map( int, foundcache[0].segment )
 
