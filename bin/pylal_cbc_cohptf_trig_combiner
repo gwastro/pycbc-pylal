@@ -224,6 +224,15 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
             [e for e in trigFiles]))
     zeroLagTrigs = None
 
+    timeSlideDoc = utils.load_filename(trigFiles[0],
+            gz=trigFiles[0].endswith(".gz"),
+            contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
+    timeSlideTable = table.get_table(timeSlideDoc,
+            lsctables.TimeSlideTable.tableName)
+    segmentTable = table.get_table(timeSlideDoc,
+            lsctables.SegmentTable.tableName)
+    timeSlideSegmentMap = table.get_table(timeSlideDoc,
+            lsctables.TimeSlideSegmentMapTable.tableName)
   elif shortSlides:
     zeroLagTrigs = {}
     zeroLagTrigs['ALL_TIMES'] = copy.deepcopy(trigs['ALL_TIMES'])
@@ -394,7 +403,7 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
       if verbose: 
         sys.stdout.write("%s written at %d\n" % (xmlName, elapsed_time()))
 
-  if shortSlides and not timeSlides:
+  elif shortSlides and not timeSlides:
     for trigTime in trigs.keys():
       xmlName = '%s/%s-%s_%s-%d-%d.xml.gz'\
                 % (outdir, ifoTag, userTag, trigTime, start, end-start)
