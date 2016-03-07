@@ -105,6 +105,8 @@ s_group.add_argument("--apply-fermi-error", action="store_true",
                      help="applies the statistical error from Fermi according "
                           "to https://wiki.ligo.org/foswiki/bin/view/Bursts/"
                           "S6VSR2InjectionSkyPositionJitter")
+s_group.add_argument("--s6-systematics", action="store_true",
+                     help="Applies the systematic Fermi error used in S6")
 
 d_group = parser.add_argument_group("Distance arguments")
 d_group.add_argument("--d-distr", default="gaussian",
@@ -123,10 +125,17 @@ jitter_sigma = np.radians(args.jitter_sigma_deg)
 
 # for details on those parameters see 
 # https://wiki.ligo.org/foswiki/bin/view/Bursts/S6VSR2InjectionSkyPositionJitter
-err70 = np.radians(3.2)
-err30 = np.radians(9.5)
-jitter_fermi70 = np.sqrt(jitter_sigma*jitter_sigma + err70*err70 )
-jitter_fermi30 = np.sqrt(jitter_sigma*jitter_sigma + err30*err30 )
+if args.s6_systematics:
+    sys_core = np.radians(3.2)
+    sys_tail = np.radians(9.5)
+    tail_frac = 0.3
+else:
+    sys_core = np.radians(3.7)
+    sys_tail = np.radians(14.0)
+    tail_frac = 0.1
+
+jitter_fermi_core = np.sqrt(jitter_sigma**2 + sys_core**2)
+jitter_fermi_tail = np.sqrt(jitter_sigma**2 + sys_tail**2)
 
 #
 # Read inputs
@@ -156,7 +165,8 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     # The Fisher distribution is the appropriate generalization of a
     # Gaussian on a sphere.
     if args.apply_fermi_error:
-      jitter_sig = np.where(random.random()<0.3, jitter_fermi30, jitter_fermi70)      
+      jitter_sig = np.where(random.random() < tail_frac, jitter_fermi_tail,
+                            jitter_fermi_core)
     else:
       jitter_sig = jitter_sigma
 
