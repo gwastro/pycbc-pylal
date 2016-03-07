@@ -1529,7 +1529,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     # Print efficiency curve to file
     file = open( "%s/efficiency_curve.txt" % outdir, "w" )
     for i in range(len(distPlotVals)):
-      print >>file, distPlotVals[i],redEfficiency[i]
+        print >>file, distPlotVals[i],redEfficiency[i]
     file.close()
 
     ax.set_ylim([0,1])
@@ -1545,26 +1545,30 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                   "loudest foreground")
     ax.set_xlabel("Distance (Mpc)")
 
-    # Print 90% exclusion distance to file and calculate MC error
-    eff_idx = np.where(redEfficiency<0.9)[0]
-    if len(eff_idx) == 0:
-        greenEfficiency = (finjsNoMC / totalinjsNoMC)
-        excl_efficiency = greenEfficiency
-        eff_idx = np.where(greenEfficiency < 0.9)[0]
-    else:
-        excl_efficiency = redEfficiency
-    if len(eff_idx) and eff_idx[0]!=0:
-      i = eff_idx[0]
-      d     = distPlotVals[i]
-      d_low = distPlotVals[i-1]
-      e     = excl_efficiency[i]
-      e_low = excl_efficiency[i-1]
-
-      excl_dist = d + (e - 0.9) * (d - d_low) / (e_low - e)
-    else:
-      excl_dist = 0
-      sys.stderr.write("Efficiency below 90% in first bin!\n")
-    open("%s/exclusion_distance.txt" % outdir, "w").write('%s\n' % excl_dist)
+    # Print 90% and 50% exclusion distance to file and calculate MC error
+    for percentile in ['50', '90']:
+        eff_idx = np.where(redEfficiency < (percentile / 100.))[0]
+        if len(eff_idx) == 0:
+            greenEfficiency = (finjsNoMC / totalinjsNoMC)
+            excl_efficiency = greenEfficiency
+            eff_idx = np.where(greenEfficiency < (percentile / 100.))[0]
+        else:
+            excl_efficiency = redEfficiency
+        if len(eff_idx) and eff_idx[0]!=0:
+            i = eff_idx[0]
+            d = distPlotVals[i]
+            d_low = distPlotVals[i-1]
+            e = excl_efficiency[i]
+            e_low = excl_efficiency[i-1]
+            excl_dist = d + (e - (percentile / 100.)) * (d - d_low) /\
+                    (e_low - e)
+        else:
+            excl_dist = 0
+            sys.stderr.write("Efficiency below %d% in first bin!\n"
+                             % percentile)
+        open("%s/exclusion_distance_%d.txt" % (outdir, percentile), "w")\
+                .write('%s\n' % excl_dist)
+    
     open("%s/sensitive_distance.txt" % outdir, "w").write('%s\n' % sens_dist)
 
     ax.plot([excl_dist],[0.9],'gx')
