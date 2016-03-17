@@ -1546,7 +1546,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_xlabel("Distance (Mpc)")
 
     # Print 90% and 50% exclusion distance to file and calculate MC error
-    for percentile in ['50', '90']:
+    for percentile in [50, 90]:
         eff_idx = np.where(redEfficiency < (percentile / 100.))[0]
         if len(eff_idx) == 0:
             greenEfficiency = (finjsNoMC / totalinjsNoMC)
@@ -1564,7 +1564,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                     (e_low - e)
         else:
             excl_dist = 0
-            sys.stderr.write("Efficiency below %d% in first bin!\n"
+            sys.stderr.write("Efficiency below %d%% in first bin!\n"
                              % percentile)
         open("%s/exclusion_distance_%d.txt" % (outdir, percentile), "w")\
                 .write('%s\n' % excl_dist)
