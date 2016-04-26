@@ -74,13 +74,9 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
                       default=6,
                       help="The number of off source trials, default: %default")
 
-  parser.add_argument("-s", "--segment-length", action="store", type=float,
-                      default=None,
-                      help="The length of analysis segments")
-
-  parser.add_argument("-p", "--pad-data", action="store", type=float,
-                      default=None,
-                      help="The length of padding around analysis chunk")
+  parser.add_argument("-p", "--trig-start-time", action="store", type=int,
+                      required=True,
+                      help="The start time of the analysis segment")
 
   parser.add_argument("-a", "--segment-dir", action="store", type=str,
                       help="directory holding buffer, on and off source "
@@ -125,8 +121,8 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
 # =============================================================================
 
 def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
-         timeSlides=None, slideTag=None, segLength=None, padData=None,\
-         shortSlides=False, verbose=False):
+         timeSlides=None, slideTag=None, trigStart=None, shortSlides=False,
+         verbose=False):
   
   if verbose: sys.stdout.write("Getting segments...\n")
 
@@ -138,7 +134,6 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   #
 
   # get segments
-  lostTime       = int(segLength//4 + padData) 
   segs           = coh_PTF_pyutils.readSegFiles(segdir)
   trialTime      = abs(segs['on'])
   
@@ -146,8 +141,7 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
   # construct off source trials
   offSourceSegs  = segments.segmentlist()
   offSourceSegs.append(segs['off'])
-  offSourceSegs.append(segments.segment(segs['off'][0]+lostTime,\
-                                        segs['off'][0]+lostTime+trialTime))
+  offSourceSegs.append(segments.segment(trigStart, trigStart + trialTime))
   for i in xrange(numTrials-1):
     t = i+2
     offSourceSegs.append(segments.segment(tuple(map(trialTime.__add__,\
@@ -453,13 +447,11 @@ if __name__=='__main__':
   numTrials   = args.num_trials
   timeSlides  = args.slide_cache
   slideTag    = args.slide_tag
-  segLength   = args.segment_length
-  padData     = args.pad_data
+  trigStart   = args.trig_start_time
   shortSlides = args.short_slides
   verbose     = args.verbose
 
   main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=GRBname,
        numTrials=numTrials, timeSlides=timeSlides, slideTag=slideTag,
-       segLength=segLength, padData=padData, shortSlides=shortSlides,
-       verbose=verbose)
+       trigStart=trigStart, shortSlides=shortSlides, verbose=verbose)
   if verbose: sys.stdout.write("Done at %d.\n" % (elapsed_time()))
