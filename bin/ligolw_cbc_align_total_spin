@@ -87,21 +87,25 @@ def alignTotalSpin(iota, s1, s2, m1, m2, f_lower):
     """
 
     # Calculate the quantities required by SimInspiralTransformPrecessingNewInitialConditions
-    thetaJN = iota
-    phiJL = np.pi
-    l = np.array([0,0,1.])
-    theta1 = np.arccos(np.dot(s1, l)/np.linalg.norm(s1))
-    theta2 = np.arccos(np.dot(s2, l)/np.linalg.norm(s2))
-    phi12 = np.arccos(np.dot(s1[:2], s2[:2])/np.linalg.norm(s1[:2])/np.linalg.norm(s2[:2]))
+    if np.linalg.norm(s1[:2]) != 0 or np.linalg.norm(s1[:2]) != 0:
+        thetaJN = iota
+        phiJL = np.pi
+        l = np.array([0,0,1.])
+        theta1 = np.arccos(np.dot(s1, l)/np.linalg.norm(s1))
+        theta2 = np.arccos(np.dot(s2, l)/np.linalg.norm(s2))
+        phi12 = np.arccos(np.dot(s1[:2], s2[:2]) / np.linalg.norm(s1[:2]) / \
+                          np.linalg.norm(s2[:2]))
 
-    news1 = np.zeros(3)
-    news2 = np.zeros(3)
-    newIota, news1[0], news1[1], news1[2], news2[0], news2[1], news2[2] = \
-        SimInspiralTransformPrecessingNewInitialConditions(thetaJN, phiJL, theta1, theta2, 
-        phi12, np.linalg.norm(s1), np.linalg.norm(s2), m1 * lal.MSUN_SI, m2 * lal.MSUN_SI, f_lower)
-
-    return newIota, news1, news2
-
+        news1 = np.zeros(3)
+        news2 = np.zeros(3)
+        newIota, news1[0], news1[1], news1[2], news2[0], news2[1], news2[2] = \
+            SimInspiralTransformPrecessingNewInitialConditions(thetaJN, phiJL,
+                    theta1, theta2, phi12, np.linalg.norm(s1),
+                    np.linalg.norm(s2), m1 * lal.MSUN_SI, m2 * lal.MSUN_SI,
+                    f_lower)
+        return newIota, news1, news2
+    else:
+        return iota, s1, s2
 
 #
 # Parse commandline
