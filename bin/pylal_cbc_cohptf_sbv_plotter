@@ -35,7 +35,7 @@ from math import sqrt
 import scipy.stats
 from optparse import OptionParser
 from glue import segments
-from pylal import git_version
+from pylal import git_version,MultiInspiralUtils
 from pylal.dq import dqSegmentUtils
 from lal import LIGOTimeGPS
 from glue.ligolw import table,lsctables,utils,ligolw
@@ -181,24 +181,39 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
   ifos = sorted(map(str, searchSumm[0].get_ifos()))
   ifoAtt = { 'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t' } 
 
+  tmp, slideDict, segmentDict = \
+          MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles([trigFile])
+  numSlides = len(slideDict)
+  lsctables.MultiInspiralTable.loadcolumns =\
+          [slot for slot in tmp[0].__slots__ if hasattr(tmp[0], slot)]
+  trigs = lsctables.New(lsctables.MultiInspiralTable,\
+          columns=lsctables.MultiInspiralTable.loadcolumns)
+
   # Construct veto list
-  vetoes = segments.segmentlist()
+  vetoes = segments.segmentlistdict()
+  for ifo in ifos:
+    vetoes[ifo] = segments.segmentlist()
+
   if vetoFiles:
     for file in vetoFiles:
-      if os.path.basename(file)[:2] in ifos:
+      ifo = os.path.basename(file)[:2]
+      if ifo in ifos:
         # This returns a coalesced list of the vetoes
         tmpVetoSegs = dqSegmentUtils.fromsegmentxml(open(file,'r'))
         for entry in tmpVetoSegs:
-          vetoes.append(entry)
-  vetoes.coalesce()
+          vetoes[ifo].append(entry)
 
-  # load triggers
-  tmp   = table.get_table(xmldoc, lsctables.MultiInspiralTable.tableName)
-  lsctables.MultiInspiralTable.loadcolumns =\
-      [slot for slot in tmp[0].__slots__ if hasattr(tmp[0], slot)]
-  trigs = lsctables.New(lsctables.MultiInspiralTable,\
-                        columns=lsctables.MultiInspiralTable.loadcolumns)
-  trigs.extend(t for t in tmp if t.get_end() not in vetoes)
+  for ifo in ifos:
+    vetoes[ifo].coalesce()
+  
+  for slideID in range(numSlides):
+    slidVetoes = copy.deepcopy(vetoes)
+    for ifo in ifos:
+      slidVetoes[ifo].shift(-slideDict[slideID][ifo])
+
+    # load triggers
+    vets = slidVetoes.union(slidVetoes.keys())
+    trigs.extend(t for t in tmp.veto(vets) if int(t.time_slide_id) == slideID)
 
   numtrigs = len(trigs)
   if numtrigs<1:
