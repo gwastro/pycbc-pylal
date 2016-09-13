@@ -170,31 +170,36 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     else:
       jitter_sig = jitter_sigma
 
-    kappa = 1 / (0.66 * jitter_sig)**2  # approximation from Briggs99
-    sim.longitude, sim.latitude = \
-        polaz2lonlat(*su.fisher_rvs(np.array(\
-            lonlat2polaz(sim.longitude, sim.latitude)), kappa).squeeze())
+    if jitter_sig > 0:
+      kappa = 1 / (0.66 * jitter_sig)**2  # approximation from Briggs99
+      sim.longitude, sim.latitude = \
+          polaz2lonlat(*su.fisher_rvs(np.array(\
+              lonlat2polaz(sim.longitude, sim.latitude)), kappa).squeeze())
 
-    # update arrival times and effective distances at the sites
-    sim_geocent_end = sim.get_end()
-    for site, detector in site_location_list:
-        site_end = site_end_time(detector, sim)
-        setattr(sim, site + "_end_time", site_end.gpsSeconds)
-        setattr(sim, site + "_end_time_ns", site_end.gpsNanoSeconds)
-        setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
+      # update arrival times and effective distances at the sites
+      sim_geocent_end = sim.get_end()
+      for site, detector in site_location_list:
+          site_end = site_end_time(detector, sim)
+          setattr(sim, site + "_end_time", site_end.gpsSeconds)
+          setattr(sim, site + "_end_time_ns", site_end.gpsNanoSeconds)
+          setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
 
 #
 # Compute new injected distances
 #
 if args.phase_error != 0 or args.amplitude_error != 0:
-    for sim in table.get_table(siminsp_doc,
-                               lsctables.SimInspiralTable.tableName):
-        mu = sim.distance * (1 + 0.5 * np.deg2rad(args.phase_error)**2)
-        sigma = (args.amplitude_error / 100.) * sim.distance
-        if args.d_distr == "gaussian":
-            setattr(sim, "distance", random.gauss(mu, sigma))
-        elif args.d_distr == "lognormal":
-            setattr(sim, "distance", np.log(random.lognormvariate(mu, sigma)))
+  for sim in table.get_table(siminsp_doc,
+                             lsctables.SimInspiralTable.tableName):
+    mu = sim.distance * (1 + 0.5 * np.deg2rad(args.phase_error)**2)
+    sigma = (args.amplitude_error / 100.) * sim.distance
+    if args.d_distr == "gaussian":
+      setattr(sim, "distance", random.gauss(mu, sigma))
+      for site, detector in site_location_list:
+        setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
+    elif args.d_distr == "lognormal":
+      setattr(sim, "distance", np.log(random.lognormvariate(mu, sigma)))
+      for site, detector in site_location_list:
+        setattr(sim, "eff_dist_" + site, eff_distance(detector, sim))
 
 #
 # Write output
