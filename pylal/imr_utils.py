@@ -20,7 +20,6 @@ from glue.ligolw import dbtables
 from glue import segments
 from glue import segmentsUtils
 from glue.ligolw import table
-from pylal import db_thinca_rings
 from pylal import rate
 import numpy
 import math
@@ -186,6 +185,7 @@ def get_instruments_from_coinc_event_table(connection):
 
 
 def get_segments(connection, xmldoc, table_name, live_time_program, veto_segments_name = None, data_segments_name = "datasegments"):
+	from pylal import db_thinca_rings
 	segs = segments.segmentlistdict()
 
 	if table_name == dbtables.lsctables.CoincInspiralTable.tableName:
