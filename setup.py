@@ -68,7 +68,7 @@ def write_build_info():
     pylal/git_version.py.
     """
     date = branch = tag = author = committer = status = builder_name = build_date = ""
-    id = "1.0.1"
+    id = "1.0.dev2"
     
     try:
         v = gvcsi.generate_git_version_info()
