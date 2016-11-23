@@ -4,7 +4,7 @@ import matplotlib.cm
 from matplotlib.patches     import Patch
 from matplotlib.axes        import Axes
 from matplotlib.collections import PolyCollection
-from matplotlib.colors      import normalize, Colormap
+from matplotlib.colors      import Normalize, Colormap
 from optparse import * 
 from pylab    import *
 import numpy
@@ -1608,7 +1608,7 @@ def tfplot(*args, **kwargs):
   """
   shading = kwargs.get('shading', 'faceted')
   cmap = kwargs.get('cmap', cm.get_cmap())
-  norm = kwargs.get('norm', normalize())
+  norm = kwargs.get('norm', Normalize())
   alpha = kwargs.get('alpha', 1.0)
   vmin = kwargs.get('vmin', None)
   vmax = kwargs.get('vmax', None)  
@@ -1637,7 +1637,7 @@ def tfplot(*args, **kwargs):
           )
   collection.set_alpha(alpha)
   collection.set_array(C)
-  if norm is not None: assert(isinstance(norm, normalize))
+  if norm is not None: assert(isinstance(norm, Normalize))
   if cmap is not None: assert(isinstance(cmap, Colormap))
   collection.set_cmap(cmap)
   collection.set_norm(norm)
