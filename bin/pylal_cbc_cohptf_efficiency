@@ -547,7 +547,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   th.append('BestNR')
   td = []
   
-  for i in range(30):
+  for i in range(min(len(offSourceTrigs), 30)):
     bestNR = offSourceTrigs[i][0]
     trig = offSourceTrigs[i][1]
     trigSlideID = int(trig.time_slide_id)
