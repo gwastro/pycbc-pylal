@@ -62,6 +62,11 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
                       default='COH_PTF_INSPIRAL_FIRST',
                       help="The user tag, COH_PTF_INSPIRAL_FIRST for instance")
 
+  parser.add_argument("-j", "--job-tag", action="store", type=str,
+                      default=None,
+                      help="The job tag, for use when more than one "
+                           "trig_combiner job is included in a workflow.")
+
   parser.add_argument("-S", "--slide-tag", action="store", type=str,
                       default='',
                       help="The slide tag, used to differentiate long slides")
@@ -120,9 +125,9 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
 # Main function
 # =============================================================================
 
-def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
-         timeSlides=None, slideTag=None, trigStart=None, shortSlides=False,
-         verbose=False):
+def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
+         numTrials=6, timeSlides=None, slideTag=None, trigStart=None,
+         shortSlides=False, verbose=False):
   
   if verbose: sys.stdout.write("Getting segments...\n")
 
@@ -385,6 +390,8 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, numTrials=6,\
       tsUserTag = '%s_GRB%s' % (tsUserTag, grbTag)
   if grbTag:
     userTag = '%s_GRB%s' % (userTag, grbTag)
+  if jobTag:
+    userTag = '%s_%s' % (userTag, jobTag)
 
   # write new xml files
   if not (shortSlides or timeSlides):
@@ -442,6 +449,7 @@ if __name__=='__main__':
   segdir      = os.path.abspath(args.segment_dir)
   ifoTag      = args.ifo_tag
   userTag     = args.user_tag
+  jobTag      = args.job_tag
   trigFiles   = args.input_files
   GRBname     = args.grb_name
   numTrials   = args.num_trials
@@ -452,6 +460,7 @@ if __name__=='__main__':
   verbose     = args.verbose
 
   main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=GRBname,
-       numTrials=numTrials, timeSlides=timeSlides, slideTag=slideTag,
-       trigStart=trigStart, shortSlides=shortSlides, verbose=verbose)
+       jobTag=jobTag, numTrials=numTrials, timeSlides=timeSlides,
+       slideTag=slideTag, trigStart=trigStart, shortSlides=shortSlides,
+       verbose=verbose)
   if verbose: sys.stdout.write("Done at %d.\n" % (elapsed_time()))
