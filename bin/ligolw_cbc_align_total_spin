@@ -38,7 +38,7 @@ from glue.ligolw import utils
 from glue.ligolw.utils import process as ligolw_process
 from pylal import git_version
 import lal
-from lalsimulation import SimInspiralTransformPrecessingNewInitialConditions
+from lalsimulation import SimInspiralTransformPrecessingObsoleteInitialConditions
 
 #
 # Utility functions
@@ -99,7 +99,7 @@ def alignTotalSpin(iota, s1, s2, m1, m2, f_lower):
         news1 = np.zeros(3)
         news2 = np.zeros(3)
         newIota, news1[0], news1[1], news1[2], news2[0], news2[1], news2[2] = \
-            SimInspiralTransformPrecessingNewInitialConditions(thetaJN, phiJL,
+            SimInspiralTransformPrecessingObsoleteInitialConditions(thetaJN, phiJL,
                     theta1, theta2, phi12, np.linalg.norm(s1),
                     np.linalg.norm(s2), m1 * lal.MSUN_SI, m2 * lal.MSUN_SI,
                     f_lower)
