@@ -77,7 +77,7 @@ def set_spins(sim, s1, s2):
     sim.spin2y = s2[1]
     sim.spin2z = s2[2]
 
-def alignTotalSpin(iota, s1, s2, m1, m2, f_lower):
+def alignTotalSpin(iota, s1, s2, m1, m2, f_lower, phi_ref):
     """
     Rigidly rotate binary so that the total angular momentum has the given
     inclination (iota) instead of the orbital angular momentum. Return
@@ -102,7 +102,7 @@ def alignTotalSpin(iota, s1, s2, m1, m2, f_lower):
             SimInspiralTransformPrecessingNewInitialConditions(thetaJN, phiJL,
                     theta1, theta2, phi12, np.linalg.norm(s1),
                     np.linalg.norm(s2), m1 * lal.MSUN_SI, m2 * lal.MSUN_SI,
-                    f_lower)
+                    f_lower, phi_ref)
         return newIota, news1, news2
     else:
         return iota, s1, s2
@@ -151,7 +151,7 @@ for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     # rotate
     s1, s2 = get_spins(sim)
     newIota, news1, news2 = alignTotalSpin(sim.inclination, s1, s2,
-        sim.mass1, sim.mass2, sim.f_lower)
+        sim.mass1, sim.mass2, sim.f_lower, sim.phi0)
     sim.inclination = newIota
     set_spins(sim, news1, news2)
 
