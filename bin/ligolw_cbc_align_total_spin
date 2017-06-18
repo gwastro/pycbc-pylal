@@ -145,8 +145,8 @@ site_location_list = [\
     ("h", lal.CachedDetectors[lal.LALDetectorIndexLHODIFF]),
     ("l", lal.CachedDetectors[lal.LALDetectorIndexLLODIFF]),
     ("g", lal.CachedDetectors[lal.LALDetectorIndexGEO600DIFF]),
-    ("l", lal.CachedDetectors[lal.LALDetectorIndexTAMA300DIFF]),
-    ("l", lal.CachedDetectors[lal.LALDetectorIndexVIRGODIFF])]
+    ("t", lal.CachedDetectors[lal.LALDetectorIndexTAMA300DIFF]),
+    ("v", lal.CachedDetectors[lal.LALDetectorIndexVIRGODIFF])]
 for sim in table.get_table(siminsp_doc, lsctables.SimInspiralTable.tableName):
     # rotate
     s1, s2 = get_spins(sim)
