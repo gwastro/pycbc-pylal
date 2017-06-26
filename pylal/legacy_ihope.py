@@ -364,6 +364,9 @@ class LegacyCohPTFTrigCombiner(LegacyAnalysisExecutable):
         if all(t.node.executable.name == "trig_cluster" for t in trig_files):
             node.add_opt('--input-files',
                          " ".join([t.storage_path for t in trig_files]))
+            if self.cp.has_option_tag('inspiral', 'do-short-slides',
+                                      'coherent_no_injections'):
+                node.add_opt('--short-slides')
         else:
             node.add_input_list_opt('--input-files', trig_files)
 
