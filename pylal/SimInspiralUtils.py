@@ -23,10 +23,10 @@
 #
 
 from pylal.xlal.datatypes.ligotimegps import LIGOTimeGPS
-from glue.ligolw import table
-from glue.ligolw import lsctables
-from glue.ligolw import utils
-from glue.ligolw import ligolw
+from pycbc_glue.ligolw import table
+from pycbc_glue.ligolw import lsctables
+from pycbc_glue.ligolw import utils
+from pycbc_glue.ligolw import ligolw
 #
 # =============================================================================
 #
