@@ -75,12 +75,10 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
                       default=None, help="GRB name, such as 090802 "+
                                         "(will be appended to output user tag")
 
-  parser.add_argument("-T", "--num-trials", action="store", type=int,
-                      default=6,
-                      help="The number of off source trials, default: %default")
+  parser.add_argument("-T", "--num-trials", type=int, default=6,
+                      help="The number of off source trials")
 
-  parser.add_argument("-p", "--trig-start-time", action="store", type=int,
-                      required=True,
+  parser.add_argument("-p", "--trig-start-time", type=int, required=True,
                       help="The start time of the analysis segment")
 
   parser.add_argument("-a", "--segment-dir", action="store", type=str,
@@ -89,14 +87,14 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
 
   parser.add_argument("-o", "--output-dir", action="store", type=str,
                       default=os.getcwd(), help="output directory, "
-                                                "default: %default")
+                                                "default: %s" % os.getcwd())
 
-  parser.add_argument("-t", "--slide-cache", action="store",default=None,
-                      help="Read slide triggers from this cache")
+  parser.add_argument("-t", "--long-slides", action="store_true",
+                      help="Are these triggers from long time slides?")
 
   parser.add_argument("-b", "--verbose", action="store_true", default=False,
                       help="verbose output with microsecond timer, "
-                           "default: %default")
+                           "default: False")
 
   parser.add_argument("-f", "--input-files", nargs="*", action="store",
                       required=True, metavar="TRIGGER FILE",
@@ -126,7 +124,7 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
 # =============================================================================
 
 def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
-         numTrials=6, timeSlides=None, slideTag=None, trigStart=None,
+         numTrials=6, timeSlides=False, slideTag=None, trigStart=None,
          shortSlides=False, verbose=False):
   
   if verbose: sys.stdout.write("Getting segments...\n")
@@ -165,17 +163,17 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
   # get trigger files 
   if verbose: sys.stdout.write("\nFinding files...\n")
 
-  if timeSlides:
-    slideCache = lal.Cache.fromfile(open(timeSlides, 'r'))
-    slideCache = slideCache.sieve(ifos=ifoTag, description=userTag)
-    if slideTag:
-      slideCache = slideCache.sieve(description=slideTag)
-    if len(slideCache)<1:
-      sys.stderr.write("No files found at %d.\n" % elapsed_time())
-      sys.exit(1)
-    else:
-      sys.stdout.write("%d files found at %d.\n"\
-                       % (len(slideCache), elapsed_time()))
+  #if timeSlides:
+  #  slideCache = lal.Cache.fromfile(open(timeSlides, 'r'))
+  #  slideCache = slideCache.sieve(ifos=ifoTag, description=userTag)
+  #  if slideTag:
+  #    slideCache = slideCache.sieve(description=slideTag)
+  #  if len(slideCache)<1:
+  #    sys.stderr.write("No files found at %d.\n" % elapsed_time())
+  #    sys.exit(1)
+  #  else:
+  #    sys.stdout.write("%d files found at %d.\n"\
+  #                     % (len(slideCache), elapsed_time()))
 
   # set columns
   ifoAtt = { 'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t' }
@@ -232,7 +230,7 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
             lsctables.SegmentTable.tableName)
     timeSlideSegmentMap = table.get_table(timeSlideDoc,
             lsctables.TimeSlideSegmentMapTable.tableName)
-  elif shortSlides:
+  elif shortSlides and not timeSlides:
     zeroLagTrigs = {}
     zeroLagTrigs['ALL_TIMES'] = copy.deepcopy(trigs['ALL_TIMES'])
     
@@ -246,16 +244,16 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
                if all(v == 0 for v in slide.values())]
     zeroLagTrigs['ALL_TIMES'].extend([trig for trig in trigs['ALL_TIMES'] \
                                       if int(trig.time_slide_id) in zeroIDs])
+  elif timeSlides:
+    tempTrigs, slideDictList, segmentDict, timeSlideTable, segmentTable, \
+            timeSlideSegmentMap = \
+            MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles(\
+            trigFiles, generate_output_tables=True)
+    trigs['ALL_TIMES'].extend(tempTrigs)
   else:
     trigs['ALL_TIMES'] = lsctables.New(lsctables.MultiInspiralTable,\
                                columns=lsctables.MultiInspiralTable.loadcolumns)
-    if trigFiles:
-      inpFiles = [e for e in trigFiles]
-    else:
-      inpFiles = []
-    inpFiles.extend([e for e in slideCache])
-    if not trigFiles:
-      cache = slideCache
+    inpFiles = [e for e in trigFiles]
     tempTrigs,slideDictList,segmentDict,timeSlideTable,\
         segmentTable,timeSlideSegmentMap = \
             MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles(inpFiles,\
@@ -312,7 +310,7 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
 
   if verbose: sys.stdout.write("\nSeparating triggers by end time...\n")
 
-  if shortSlides or timeSlides:
+  if shortSlides and not timeSlides:
     zeroLagTrigs['ONSOURCE'] = lsctables.New(lsctables.MultiInspiralTable,\
                                columns=lsctables.MultiInspiralTable.loadcolumns)
     zeroLagTrigs['OFFSOURCE'] = copy.deepcopy(zeroLagTrigs['ONSOURCE'])
@@ -335,10 +333,8 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
   if shortSlides or timeSlides:
     for trig in trigs['ALL_TIMES']:
       slideID = int(trig.time_slide_id)
-      in_buffer = []
-      for ifo in ifos:
-        offset = slideDictList[slideID][ifo]
-        in_buffer.append(trig.get_end()+offset in segs['buffer'])
+      in_buffer = [trig.get_end() + slideDictList[slideID][ifo]
+                   in segs['buffer'] for ifo in ifos]
       if not any(in_buffer):
           trigs['OFFSOURCE'].append(trig)
   else:
@@ -388,6 +384,10 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
     tsUserTag = '%s_TIMESLIDES' %(userTag)
     if grbTag:
       tsUserTag = '%s_GRB%s' % (tsUserTag, grbTag)
+    if slideTag:
+      tsUserTag = '%s_%s' % (tsUserTag, slideTag)
+    if jobTag:
+      tsUserTag = '%s_%s' % (tsUserTag, jobTag)
   if grbTag:
     userTag = '%s_GRB%s' % (userTag, grbTag)
   if jobTag:
@@ -428,12 +428,8 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
 
   else:
     for trigTime in trigs.keys():
-      if slideTag:
-        fullTag = '%s-%s_%s' %(ifoTag, tsUserTag, slideTag)
-      else:
-        fullTag = '%s-%s' %(ifoTag, tsUserTag)
-      xmlName = '%s/%s_%s-%d-%d.xml.gz'\
-                % (outdir, fullTag, trigTime, start, end-start)
+      xmlName = '%s/%s-%s_%s-%d-%d.xml.gz'\
+                % (outdir, ifoTag, tsUserTag, trigTime, start, end-start)
       xmldoc.childNodes[-1].appendChild(trigs[trigTime])
       utils.write_filename(xmldoc, xmlName, gz = xmlName.endswith('gz'))
       xmldoc.childNodes[-1].removeChild(trigs[trigTime])
@@ -453,7 +449,7 @@ if __name__=='__main__':
   trigFiles   = args.input_files
   GRBname     = args.grb_name
   numTrials   = args.num_trials
-  timeSlides  = args.slide_cache
+  timeSlides  = args.long_slides
   slideTag    = args.slide_tag
   trigStart   = args.trig_start_time
   shortSlides = args.short_slides

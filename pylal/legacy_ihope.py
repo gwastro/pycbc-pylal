@@ -238,7 +238,8 @@ class LegacyCohPTFInspiralExecutable(LegacyAnalysisExecutable):
         self.num_threads = 1
 
     def create_node(self, data_seg, valid_seg, parent=None, inj_file=None,
-                    dfParents=None, bankVetoBank=None, ipn_file=None, tags=None):
+                    dfParents=None, bankVetoBank=None, ipn_file=None,
+                    slide=None, tags=None):
         if tags is None:
             tags = []
         node = Node(self)
@@ -297,6 +298,9 @@ class LegacyCohPTFInspiralExecutable(LegacyAnalysisExecutable):
                                  "configuration file accordingly.")
             node.add_input_opt('--injection-file', inj_file)
 
+        if slide is not None:
+            for ifo in self.ifo_list:
+                node.add_opt('--%s-slide-segment' % ifo.lower(), slide[ifo])
         return node
 
     def get_valid_times(self):
@@ -332,7 +336,7 @@ class LegacyCohPTFTrigCombiner(LegacyAnalysisExecutable):
         self.num_threads = 1
 
     def create_node(self, trig_files=None, segment_dir=None, analysis_seg=None,
-                    out_tags=None, tags=None):
+                    slide_tag=None, out_tags=None, tags=None):
         import Pegasus.DAX3 as dax
         if out_tags is None:
             out_tags = []
@@ -360,15 +364,27 @@ class LegacyCohPTFTrigCombiner(LegacyAnalysisExecutable):
         if tags:
             node.add_opt('--job-tag', '_'.join(tags))
 
+        if slide_tag is not None:
+            node.add_opt('--slide-tag', slide_tag)
+            node.add_opt('--long-slides')
+            tag_start=["TIMESLIDES_GRB%s_%s" % (trig_name, slide_tag)]+tags
+        else:
+            tag_start=["GRB%s" % trig_name]+tags
+
         # Set input / output options
-        if all(t.node.executable.name == "trig_cluster" for t in trig_files):
+        if all(hasattr(t.node, "executable") for t in trig_files):
+            if all(t.node.executable.name == "trig_cluster"
+                   for t in trig_files):
+                node.add_opt('--input-files',
+                             " ".join([t.storage_path for t in trig_files]))
+                if self.cp.has_option_tag('inspiral', 'do-short-slides',
+                                          'coherent_no_injections'):
+                    node.add_opt('--short-slides')
+            else:
+                node.add_input_list_opt('--input-files', trig_files)
+        else:
             node.add_opt('--input-files',
                          " ".join([t.storage_path for t in trig_files]))
-            if self.cp.has_option_tag('inspiral', 'do-short-slides',
-                                      'coherent_no_injections'):
-                node.add_opt('--short-slides')
-        else:
-            node.add_input_list_opt('--input-files', trig_files)
 
         node.add_opt('--segment-dir', segment_dir)
         node.add_opt('--output-dir', self.out_dir)
@@ -377,7 +393,7 @@ class LegacyCohPTFTrigCombiner(LegacyAnalysisExecutable):
         for out_tag in out_tags:
             out_file = File(self.ifos, 'INSPIRAL', trig_files[0].segment,
                             directory=self.out_dir, extension='xml.gz',
-                            tags=["GRB%s" % trig_name]+tags+[out_tag],
+                            tags=tag_start+[out_tag],
                             store_file=self.retain_files)
             out_files.append(out_file)
             #node._dax_node.uses(out_file, link=dax.Link.OUTPUT, register=False,
@@ -389,8 +405,7 @@ class LegacyCohPTFTrigCombiner(LegacyAnalysisExecutable):
         for trial in range(1, num_trials + 1):
             out_file = File(self.ifos, 'INSPIRAL', trig_files[0].segment,
                             directory=self.out_dir, extension='xml.gz',
-                            tags=["GRB%s" % trig_name]+tags+\
-                                 ["OFFTRIAL_%d" % trial],
+                            tags=tag_start+["OFFTRIAL_%d" % trial],
                             store_file=self.retain_files)
             out_files.append(out_file)
             #node._dax_node.uses(out_file, link=dax.Link.OUTPUT, register=False,

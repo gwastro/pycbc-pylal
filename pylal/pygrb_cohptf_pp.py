@@ -40,10 +40,11 @@ from pycbc.workflow.core import File, FileList, make_analysis_dir
 from pylal.legacy_ihope import select_generic_executable
 
 def setup_coh_PTF_post_processing(workflow, trigger_files, trigger_cache, 
-        output_dir, segment_dir, injection_trigger_files=None,
-        injection_files=None, injection_trigger_caches=None,
-        injection_caches=None, config_file=None, run_dir=None, ifos=None,
-        web_dir=None, segments_plot=None, inj_tags=None, tags=None, **kwargs):
+        output_dir, segment_dir, timeslide_trigger_files=None,
+        injection_trigger_files=None, injection_files=None,
+        injection_trigger_caches=None, injection_caches=None, config_file=None,
+        run_dir=None, ifos=None, web_dir=None, segments_plot=None,
+        inj_tags=None, tags=None, **kwargs):
     """
     This function aims to be the gateway for running postprocessing on the
     output of lalapps_coh_PTF_inspiral for the PyGRB+coh_PTF hybrid workflow.
@@ -60,6 +61,8 @@ def setup_coh_PTF_post_processing(workflow, trigger_files, trigger_cache,
         The directory in which output files will be stored.
     segment_dir : path
         The directory in which data segment information is stored.
+    timeslide_trigger_files : pycbc.workflow.core.FileList
+        A FileList of the trigger files produced by timeslide jobs.
     injection_trigger_files : pycbc.workflow.core.FileList
         A FileList of the trigger files produced by injection jobs.
     injection_trigger_caches : pycbc.workflow.core.FileList
@@ -103,22 +106,25 @@ def setup_coh_PTF_post_processing(workflow, trigger_files, trigger_cache,
     post_proc_method = workflow.cp.get_opt_tags("workflow-postproc",
                                                 "postproc-method", tags)
 
+    print ifos
     # Scope here for adding different options/methods here. For now we only
     # have the single_stage ihope method which consists of converting the
     # ligolw_thinca output xml into one file, clustering, performing injection
     # finding and putting everything into one SQL database.
     if post_proc_method in ["COH_PTF_WORKFLOW", "COH_PTF_OFFLINE"]:
         post_proc_files = setup_postproc_coh_PTF_offline_workflow(workflow,
-                trigger_files, trigger_cache, injection_trigger_files,
-                injection_files, injection_trigger_caches, injection_caches,
-                config_file, output_dir, web_dir, segment_dir, segments_plot,
-                ifos=ifos, inj_tags=inj_tags, tags=tags, **kwargs)
+                trigger_files, trigger_cache, timeslide_trigger_files,
+                injection_trigger_files, injection_files,
+                injection_trigger_caches, injection_caches, config_file,
+                output_dir, web_dir, segment_dir, segments_plot, ifos=ifos,
+                inj_tags=inj_tags, tags=tags, **kwargs)
     elif post_proc_method == "COH_PTF_ONLINE":
         post_proc_files = setup_postproc_coh_PTF_online_workflow(workflow,
-                trigger_files, trigger_cache, injection_trigger_files,
-                injection_files, injection_trigger_caches, injection_caches,
-                config_file, output_dir, web_dir, segment_dir, segments_plot,
-                ifos=ifos, inj_tags=inj_tags, tags=tags, **kwargs)
+                trigger_files, trigger_cache, timeslide_trigger_files,
+                injection_trigger_files, injection_files,
+                injection_trigger_caches, injection_caches, config_file,
+                output_dir, web_dir, segment_dir, segments_plot, ifos=ifos,
+                inj_tags=inj_tags, tags=tags, **kwargs)
     else:
         errMsg = "Post-processing method not recognized. Must be one of "
         errMsg += "COH_PTF_WORKFLOW, COH_PTF_OFFLINE, COH_PTF_ONLINE."
@@ -130,9 +136,9 @@ def setup_coh_PTF_post_processing(workflow, trigger_files, trigger_cache,
 
 
 def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
-        inj_trig_files, inj_files, inj_trig_caches, inj_caches, config_file,
-        output_dir, html_dir, segment_dir, segs_plot, ifos, inj_tags=None,
-        tags=None):
+        ts_trig_files, inj_trig_files, inj_files, inj_trig_caches, inj_caches,
+        config_file, output_dir, html_dir, segment_dir, segs_plot, ifos,
+        inj_tags=None, tags=None):
     """
     This module sets up the post-processing stage in the workflow, using a
     coh_PTF style set up. This consists of running trig_combiner to find
@@ -149,6 +155,8 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
         A FileList of the trigger files from the on/off source analysis jobs.
     trig_cache : pycbc.workflow.core.File
         A cache file pointing to the trigger files.
+    ts_trig_files : pycbc.workflow.core.FileList
+        A FileList of the trigger files from the timeslide analysis jobs.
     inj_trig_files : pycbc.workflow.core.FileList
         A FileList of the trigger files produced by injection jobs.
     inj_files : pycbc.workflow.core.FileList
@@ -230,6 +238,56 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
     trig_cluster_outs = FileList([])
     trig_cluster_jobs = trig_cluster_class(cp, "trig_cluster", ifo=ifos,
                                            out_dir=output_dir, tags=tags)
+
+    if ts_trig_files is not None:
+        # We have long timeslides, so process them too
+        trig_combiner_ts_nodes = []
+        ts_offsource_outs = FileList([out for out in trig_combiner_outs
+                                      if "OFFSOURCE" in out.tag_str])
+        trig_combiner_ts_out_tags = ["OFFSOURCE", "ALL_TIMES"]
+        ts_tags = list(set([[ts_tag for ts_tag in ts_trig_file.tags
+                             if "SLIDE" in ts_tag][0]
+                            for ts_trig_file in ts_trig_files]))
+        for ts_tag in ts_tags:
+            # Do one slide at a time
+            ts_trigs = FileList([ts_trig_file for ts_trig_file in ts_trig_files
+                                 if ts_tag in ts_trig_file.tags])
+            trig_combiner_ts_node, trig_combiner_ts_outs = \
+                    trig_combiner_jobs.create_node(ts_trigs, segment_dir,
+                            workflow.analysis_time, slide_tag=ts_tag,
+                            out_tags=trig_combiner_ts_out_tags, tags=tags)
+            trig_combiner_ts_nodes.append(trig_combiner_ts_node)
+            pp_nodes.append(trig_combiner_ts_node)
+            workflow.add_node(trig_combiner_ts_node)
+            pp_outs.extend(trig_combiner_ts_outs)
+            ts_offsource_outs.extend(FileList([out for out in 
+                    trig_combiner_ts_outs if "OFFSOURCE" in out.tag_str]))
+
+            # Set up trig combiner jobs for each timeslide
+            for ts_out_tag in trig_combiner_ts_out_tags:
+                unclust_file = [f for f in trig_combiner_ts_outs \
+                                if ts_out_tag in f.tag_str][0]
+                trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
+                        unclust_file)
+                trig_cluster_outs.extend(curr_outs)
+                clust_file = curr_outs[0]
+                pp_nodes.append(trig_cluster_node)
+                workflow.add_node(trig_cluster_node)
+                dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
+                                     child=trig_cluster_node._dax_node)
+                workflow._adag.addDependency(dep)        
+
+        # Combine all offsources from timeslides
+        trig_combiner_all_node, trig_combiner_all_outs = \
+                trig_combiner_jobs.create_node(ts_offsource_outs, segment_dir,
+                            workflow.analysis_time,
+                            out_tags=trig_combiner_ts_out_tags, tags=tags)
+        pp_nodes.append(trig_combiner_all_node)
+        workflow.add_node(trig_combiner_all_node)
+        for trig_combiner_ts_node in trig_combiner_ts_nodes:
+            dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
+                                 child=trig_combiner_all_node._dax_node)
+            workflow._adag.addDependency(dep)        
 
     # Set up injfinder jobs
     if cp.has_section("workflow-injections"):
@@ -331,8 +389,6 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
         trig_cluster_outs.extend(curr_outs)
         clust_file = curr_outs[0]
         if out_tag != "ONSOURCE":
-            # Add memory requirememnt for jobs with potentially large files
-            trig_cluster_node.set_memory(1300)
             pp_nodes.append(trig_cluster_node)
             workflow.add_node(trig_cluster_node)
             dep = dax.Dependency(parent=trig_combiner_node._dax_node,
@@ -384,7 +440,6 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
             # Also add sbv_plotter job for unclustered triggers
             sbv_plotter_node = sbv_plotter_jobs.create_node(unclust_file,
                     segment_dir, tags=[out_tag, "_unclustered"])
-            sbv_plotter_node.set_memory(1300)
             pp_nodes.append(sbv_plotter_node)
             workflow.add_node(sbv_plotter_node)
             dep = dax.Dependency(parent=trig_combiner_node._dax_node,
@@ -544,9 +599,9 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
 
 
 def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
-        inj_trig_files, inj_files, inj_trig_caches, inj_caches, config_file,
-        output_dir, html_dir, segment_dir, segs_plot, ifos, inj_tags=None,
-        tags=None):
+        ts_trig_files, inj_trig_files, inj_files, inj_trig_caches, inj_caches,
+        config_file, output_dir, html_dir, segment_dir, segs_plot, ifos,
+        inj_tags=None, tags=None):
     """
     This module sets up a stripped down post-processing stage for the online
     workflow, using a coh_PTF style set up. This consists of running
@@ -564,6 +619,8 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
         A FileList of the trigger files from the on/off source analysis jobs.
     trig_cache : pycbc.workflow.core.File
         A cache file pointing to the trigger files.
+    ts_trig_files : pycbc.workflow.core.FileList
+        A FileList of the trigger files from the timeslide analysis jobs.
     inj_trig_files : pycbc.workflow.core.FileList
         A FileList of the trigger files produced by injection jobs.
     inj_files : pycbc.workflow.core.FileList
@@ -664,7 +721,6 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
                     unclust_file)
             trig_cluster_s1_outs.extend(curr_outs)
             clust_file = curr_outs[0]
-            trig_cluster_s1_node.set_memory(1300)
             trig_cluster_s1_nodes.append(trig_cluster_s1_node)
             pp_nodes.append(trig_cluster_s1_node)
             workflow.add_node(trig_cluster_s1_node)
@@ -697,6 +753,105 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
     trig_cluster_outs = FileList([])
     trig_cluster_jobs = trig_cluster_class(cp, "trig_cluster", ifo=ifos,
                                            out_dir=output_dir, tags=tags)
+
+    if ts_trig_files is not None:
+        # We have long timeslides, so process them too
+        trig_combiner_ts_nodes = []
+        ts_offsource_outs = FileList([out for out in trig_combiner_outs
+                                      if "OFFSOURCE" in out.tag_str])
+        ts_offsource_clust_outs = FileList([out for out in trig_cluster_outs
+                                            if "OFFSOURCE" in out.tag_str])
+        trig_combiner_ts_out_tags = ["OFFSOURCE", "ALL_TIMES"]
+        ts_tags = list(set([[ts_tag for ts_tag in ts_trig_file.tags
+                             if "SLIDE" in ts_tag][0]
+                            for ts_trig_file in ts_trig_files]))
+        for ts_tag in ts_tags:
+            # Do one slide at a time
+            ts_trigs = FileList([ts_trig_file for ts_trig_file in ts_trig_files
+                                 if ts_tag in ts_trig_file.tags])
+
+            # And do two-stage clustering if desired
+            if workflow.cp.has_option("workflow-postproc",
+                                      "do-two-stage-clustering"):
+
+                split_trig_files = (ts_trigs[p:p + num_inputs_per_job]
+                        for p in xrange(0, len(ts_trigs), num_inputs_per_job))
+                trig_cluster_s1_nodes = []
+                trig_cluster_s1_outs = FileList([])
+                for j, s1_inputs in zip(range(num_stage_one_jobs),
+                                        split_trig_files):
+                    trig_combiner_s1_node, trig_combiner_s1_outs = \
+                            trig_combiner_s1_jobs.create_node(s1_inputs,
+                                     segment_dir, workflow.analysis_time,
+                                     out_tags=trig_combiner_ts_out_tags,
+                                     slide_tag=ts_tag, tags=tags+[str(j)])
+                    pp_nodes.append(trig_combiner_s1_node)
+                    workflow.add_node(trig_combiner_s1_node)
+
+                    unclust_file = [f for f in trig_combiner_s1_outs \
+                                    if "ALL_TIMES" in f.tag_str][0]
+                    trig_cluster_s1_node, curr_outs = \
+                            trig_cluster_s1_jobs.create_node(unclust_file)
+                    trig_cluster_s1_outs.extend(curr_outs)
+                    clust_file = curr_outs[0]
+                    trig_cluster_s1_nodes.append(trig_cluster_s1_node)
+                    pp_nodes.append(trig_cluster_s1_node)
+                    workflow.add_node(trig_cluster_s1_node)
+                    dep = dax.Dependency(parent=trig_combiner_s1_node._dax_node,
+                                         child=trig_cluster_s1_node._dax_node)
+                    workflow._adag.addDependency(dep)
+
+                trig_combiner_ts_node, trig_combiner_ts_outs = \
+                        trig_combiner_jobs.create_node(trig_cluster_s1_outs,
+                                segment_dir, workflow.analysis_time,
+                                slide_tag=ts_tag,
+                                out_tags=trig_combiner_ts_out_tags, tags=tags)
+                trig_combiner_ts_nodes.append(trig_combiner_ts_node)
+                pp_nodes.append(trig_combiner_ts_node)
+                workflow.add_node(trig_combiner_ts_node)
+                pp_outs.extend(trig_combiner_ts_outs)
+                for trig_cluster_s1_node in trig_cluster_s1_nodes:
+                    dep = dax.Dependency(parent=trig_cluster_s1_node._dax_node,
+                                         child=trig_combiner_ts_node._dax_node)
+                    workflow._adag.addDependency(dep)
+            else:
+                trig_combiner_ts_node, trig_combiner_ts_outs = \
+                        trig_combiner_jobs.create_node(ts_trigs, segment_dir,
+                                workflow.analysis_time, slide_tag=ts_tag,
+                                out_tags=trig_combiner_ts_out_tags, tags=tags)
+                trig_combiner_ts_nodes.append(trig_combiner_ts_node)
+                pp_nodes.append(trig_combiner_ts_node)
+                workflow.add_node(trig_combiner_ts_node)
+                pp_outs.extend(trig_combiner_ts_outs)
+
+            ts_offsource_outs.extend(FileList([out for out in 
+                    trig_combiner_ts_outs if "OFFSOURCE" in out.tag_str]))
+
+            # Set up trig cluster jobs for each timeslide
+            for ts_out_tag in trig_combiner_ts_out_tags:
+                unclust_file = [f for f in trig_combiner_ts_outs \
+                                if ts_out_tag in f.tag_str][0]
+                trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
+                        unclust_file)
+                trig_cluster_outs.extend(curr_outs)
+                clust_file = curr_outs[0]
+                pp_nodes.append(trig_cluster_node)
+                workflow.add_node(trig_cluster_node)
+                dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
+                                     child=trig_cluster_node._dax_node)
+                workflow._adag.addDependency(dep)        
+
+        # Combine all offsources from timeslides
+        trig_combiner_all_node, trig_combiner_all_outs = \
+                trig_combiner_jobs.create_node(ts_offsource_outs, segment_dir,
+                            workflow.analysis_time,
+                            out_tags=trig_combiner_ts_out_tags, tags=tags)
+        pp_nodes.append(trig_combiner_all_node)
+        workflow.add_node(trig_combiner_all_node)
+        for trig_combiner_ts_node in trig_combiner_ts_nodes:
+            dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
+                                 child=trig_combiner_all_node._dax_node)
+            workflow._adag.addDependency(dep)        
 
     # Set up injfinder jobs
     if cp.has_section("workflow-injections"):
@@ -798,8 +953,6 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
         trig_cluster_outs.extend(curr_outs)
         clust_file = curr_outs[0]
         if out_tag != "ONSOURCE":
-            # Add memory requirememnt for jobs with potentially large files
-            trig_cluster_node.set_memory(1300)
             pp_nodes.append(trig_cluster_node)
             workflow.add_node(trig_cluster_node)
             dep = dax.Dependency(parent=trig_combiner_node._dax_node,
