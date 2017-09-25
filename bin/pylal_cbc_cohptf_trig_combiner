@@ -335,11 +335,11 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
   if shortSlides or timeSlides:
     for trig in trigs['ALL_TIMES']:
       slideID = int(trig.time_slide_id)
+      in_buffer = []
       for ifo in ifos:
         offset = slideDictList[slideID][ifo]
-        if trig.get_end()+offset in segs['buffer']:
-          break
-        else:
+        in_buffer.append(trig.get_end()+offset in segs['buffer'])
+      if not any(in_buffer):
           trigs['OFFSOURCE'].append(trig)
   else:
     trigs['ONSOURCE'] = lsctables.New(lsctables.MultiInspiralTable,\
