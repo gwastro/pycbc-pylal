@@ -135,6 +135,90 @@ def setup_coh_PTF_post_processing(workflow, trigger_files, trigger_cache,
     return post_proc_files
 
 
+def setup_coh_PTF_injections_pp(wf, inj_trigger_files, inj_files,
+                                inj_trigger_caches, inj_caches,
+                                pp_nodes, pp_outs, inj_tags, out_dir, seg_dir,
+                                ifos, tags=None):
+    """
+    Set up post processing for injections
+    """
+    injfinder_nodes = []
+    injcombiner_parent_nodes = []
+    inj_sbv_plotter_parent_nodes = []
+    full_segment = inj_trigger_files[0].segment
+
+    injfinder_exe = os.path.basename(wf.cp.get("executables", "injfinder"))
+    injfinder_class = select_generic_executable(wf, "injfinder")
+    injfinder_jobs = injfinder_class(wf.cp, "injfinder", ifo=ifos,
+                                     out_dir=out_dir, tags=tags)
+
+    injcombiner_exe = os.path.basename(wf.cp.get("executables", "injcombiner"))
+    injcombiner_class = select_generic_executable(wf, "injcombiner")
+    injcombiner_jobs = injcombiner_class(wf.cp, "injcombiner", ifo=ifos,
+                                         out_dir=out_dir, tags=tags)
+
+    injfinder_outs = FileList([])
+    for inj_tag in inj_tags:
+        triggers = FileList([file for file in inj_trigger_files \
+                             if inj_tag in file.tag_str])
+        injections = FileList([file for file in inj_files \
+                               if inj_tag in file.tag_str])
+        trig_cache = [file for file in inj_trigger_caches \
+                      if inj_tag in file.tag_str][0]
+        inj_cache = [file for file in inj_caches \
+                     if inj_tag in file.tag_str][0]
+        injfinder_node, curr_outs = injfinder_jobs.create_node(\
+                triggers, injections, seg_dir, tags=[inj_tag])
+        injfinder_nodes.append(injfinder_node)
+        pp_nodes.append(injfinder_node)
+        wf.add_node(injfinder_node)
+        injfinder_outs.extend(curr_outs)
+        if "DETECTION" not in curr_outs[0].tagged_description:
+            injcombiner_parent_nodes.append(injfinder_node)
+        else:
+            inj_sbv_plotter_parent_nodes.append(injfinder_node)
+
+    pp_outs.extend(injfinder_outs)
+
+    # Make injfinder output cache
+    fm_cache = File(ifos, "foundmissed", full_segment,
+                    extension="lcf", directory=out_dir)
+    fm_cache.PFN(fm_cache.cache_entry.path, site="local")
+    injfinder_outs.convert_to_lal_cache().tofile(\
+            open(fm_cache.storage_path, "w"))
+    pp_outs.extend(FileList([fm_cache]))
+
+    # Set up injcombiner jobs
+    injcombiner_outs = FileList([f for f in injfinder_outs \
+                                 if "DETECTION" in f.tag_str])
+    injcombiner_tags = [inj_tag for inj_tag in inj_tags \
+                        if "DETECTION" not in inj_tag]
+    injcombiner_out_tags = [i.tag_str.rsplit('_', 1)[0] for i in \
+                            injcombiner_outs if "FOUND" in i.tag_str]
+    injcombiner_nodes = []
+
+    for injcombiner_tag in injcombiner_tags:
+        max_inc = wf.cp.get_opt_tags("injections", "max-inc",
+                                     [injcombiner_tag])
+        inj_str = injcombiner_tag.replace("INJ", "")
+        inputs = FileList([f for f in injfinder_outs \
+                           if injcombiner_tag in f.tagged_description])
+        injcombiner_node, curr_outs = injcombiner_jobs.create_node(\
+                fm_cache, inputs, inj_str, max_inc, wf.analysis_time)
+        injcombiner_nodes.append(injcombiner_node)
+        injcombiner_out_tags.append("%s_FILTERED_%s"
+                                    % (inj_str.split(max_inc)[0], max_inc))
+        injcombiner_outs.extend(curr_outs)
+        pp_outs.extend(curr_outs)
+        pp_nodes.append(injcombiner_node)
+        wf.add_node(injcombiner_node)
+        for parent_node in injcombiner_parent_nodes:
+            dep = dax.Dependency(parent=parent_node._dax_node,
+                                 child=injcombiner_node._dax_node)
+            wf._adag.addDependency(dep)
+
+    return wf, injfinder_nodes, injfinder_outs, fm_cache, injcombiner_nodes, injcombiner_outs, injcombiner_out_tags, inj_sbv_plotter_parent_nodes, pp_nodes, pp_outs
+
 def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
         ts_trig_files, inj_trig_files, inj_files, inj_trig_caches, inj_caches,
         config_file, output_dir, html_dir, segment_dir, segs_plot, ifos,
@@ -201,6 +285,7 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
     trig_name = cp.get("workflow", "trigger-name")
     grb_string = "GRB" + trig_name
     num_trials = int(cp.get("trig_combiner", "num-trials"))
+    do_injections = cp.has_section("workflow-injections")
 
     pp_outs = FileList([])
     pp_nodes = []
@@ -289,82 +374,14 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
                                  child=trig_combiner_all_node._dax_node)
             workflow._adag.addDependency(dep)        
 
-    # Set up injfinder jobs
-    if cp.has_section("workflow-injections"):
-        injfinder_nodes = []
-        injcombiner_parent_nodes = []
-        inj_sbv_plotter_parent_nodes = []
-
-        injfinder_exe = os.path.basename(cp.get("executables", "injfinder"))
-        injfinder_class = select_generic_executable(workflow, "injfinder")
-        injfinder_jobs = injfinder_class(cp, "injfinder", ifo=ifos,
-                                         out_dir=output_dir, tags=tags)
-
-        injcombiner_exe = os.path.basename(cp.get("executables",
-                                                  "injcombiner"))
-        injcombiner_class = select_generic_executable(workflow, "injcombiner")
-        injcombiner_jobs = injcombiner_class(cp, "injcombiner", ifo=ifos,
-                                             out_dir=output_dir, tags=tags)
-
-        injfinder_outs = FileList([])
-        for inj_tag in inj_tags:
-            triggers = FileList([file for file in inj_trig_files \
-                                 if inj_tag in file.tag_str])
-            injections = FileList([file for file in inj_files \
-                                   if inj_tag in file.tag_str])
-            trig_cache = [file for file in inj_trig_caches \
-                          if inj_tag in file.tag_str][0]
-            inj_cache = [file for file in inj_caches \
-                         if inj_tag in file.tag_str][0]
-            injfinder_node, curr_outs = injfinder_jobs.create_node(\
-                    triggers, injections, segment_dir, tags=[inj_tag])
-            injfinder_nodes.append(injfinder_node)
-            pp_nodes.append(injfinder_node)
-            workflow.add_node(injfinder_node)
-            injfinder_outs.extend(curr_outs)
-            if "DETECTION" not in curr_outs[0].tagged_description:
-                injcombiner_parent_nodes.append(injfinder_node)
-            else:
-                inj_sbv_plotter_parent_nodes.append(injfinder_node)
-
-        pp_outs.extend(injfinder_outs)
-
-        # Make injfinder output cache
-        fm_cache = File(ifos, "foundmissed", full_segment,
-                        extension="lcf", directory=output_dir)
-        fm_cache.PFN(fm_cache.cache_entry.path, site="local")
-        injfinder_outs.convert_to_lal_cache().tofile(\
-                open(fm_cache.storage_path, "w"))
-        pp_outs.extend(FileList([fm_cache]))
-
-        # Set up injcombiner jobs
-        injcombiner_outs = FileList([f for f in injfinder_outs \
-                                     if "DETECTION" in f.tag_str])
-        injcombiner_tags = [inj_tag for inj_tag in inj_tags \
-                            if "DETECTION" not in inj_tag]
-        injcombiner_out_tags = [i.tag_str.rsplit('_', 1)[0] for i in \
-                                injcombiner_outs if "FOUND" in i.tag_str]
-        injcombiner_nodes = []
-
-        for injcombiner_tag in injcombiner_tags:
-            max_inc = cp.get_opt_tags("injections", "max-inc",
-                                      [injcombiner_tag])
-            inj_str = injcombiner_tag.replace("INJ", "")
-            inputs = FileList([f for f in injfinder_outs \
-                               if injcombiner_tag in f.tagged_description])
-            injcombiner_node, curr_outs = injcombiner_jobs.create_node(\
-                    fm_cache, inputs, inj_str, max_inc, workflow.analysis_time)
-            injcombiner_nodes.append(injcombiner_node)
-            injcombiner_out_tags.append("%s_FILTERED_%s"
-                                        % (inj_str.split(max_inc)[0], max_inc))
-            injcombiner_outs.extend(curr_outs)
-            pp_outs.extend(curr_outs)
-            pp_nodes.append(injcombiner_node)
-            workflow.add_node(injcombiner_node)
-            for parent_node in injcombiner_parent_nodes:
-                dep = dax.Dependency(parent=parent_node._dax_node,
-                                     child=injcombiner_node._dax_node)
-                workflow._adag.addDependency(dep)
+    if do_injections:
+        workflow, injfinder_nodes, injfinder_outs, fm_cache, \
+                injcombiner_nodes, injcombiner_outs, injcombiner_out_tags, \
+                inj_sbv_plotter_parent_nodes, pp_nodes, pp_outs = \
+                setup_coh_PTF_injections_pp(workflow, inj_trig_files,
+                        inj_files, inj_trig_caches, inj_caches, pp_nodes,
+                        pp_outs, inj_tags, output_dir, segment_dir, ifos,
+                        tags=tags)
 
         # Initialise injection_efficiency class
         inj_efficiency_jobs = efficiency_class(cp, "inj_efficiency", ifo=ifos,
@@ -411,8 +428,7 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
                 offsource_clustered = clust_file
                 off_node = sbv_plotter_node
 
-            if out_tag == "OFFSOURCE" and \
-                    cp.has_section("workflow-injections"):
+            if out_tag == "OFFSOURCE" and do_injections:
                 found_inj_files = FileList([file for file in injcombiner_outs \
                                             if "FOUND" in file.tag_str])
                 for curr_injs in found_inj_files:
@@ -461,7 +477,7 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
                                  child=efficiency_node._dax_node)
             workflow._adag.addDependency(dep)
 
-            if cp.has_section("workflow-injections"):
+            if do_injections:
                 for tag in injcombiner_out_tags:
                     if "_FILTERED_" in tag:
                         inj_set_tag = [t for t in inj_tags if \
@@ -522,7 +538,7 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
         workflow._adag.addDependency(dep)
 
         # Adding inj_efficiency job
-        if cp.has_section("workflow-injections"):
+        if do_injections:
             for tag in injcombiner_out_tags:
                 if "_FILTERED_" in tag:
                     inj_set_tag = [t for t in inj_tags if \
@@ -558,7 +574,7 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
     #FIXME: We may want this job to run even if some jobs fail
     html_summary_jobs = html_summary_class(cp, "html_summary", ifo=ifos,
                                            out_dir=output_dir, tags=tags)
-    if cp.has_section("workflow-injections"):
+    if do_injections:
         tuning_tags = [inj_tag for inj_tag in injcombiner_out_tags \
                        if "DETECTION" in inj_tag]
         exclusion_tags = [inj_tag for inj_tag in injcombiner_out_tags \
@@ -665,6 +681,7 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
     trig_name = cp.get("workflow", "trigger-name")
     grb_string = "GRB" + trig_name
     num_trials = int(cp.get("trig_combiner", "num-trials"))
+    do_injections = cp.has_section("workflow-injections")
 
     pp_outs = FileList([])
     pp_nodes = []
@@ -853,82 +870,14 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
                                  child=trig_combiner_all_node._dax_node)
             workflow._adag.addDependency(dep)        
 
-    # Set up injfinder jobs
-    if cp.has_section("workflow-injections"):
-        injfinder_nodes = []
-        injcombiner_parent_nodes = []
-        inj_sbv_plotter_parent_nodes = []
-
-        injfinder_exe = os.path.basename(cp.get("executables", "injfinder"))
-        injfinder_class = select_generic_executable(workflow, "injfinder")
-        injfinder_jobs = injfinder_class(cp, "injfinder", ifo=ifos,
-                                         out_dir=output_dir, tags=tags)
-
-        injcombiner_exe = os.path.basename(cp.get("executables",
-                                                  "injcombiner"))
-        injcombiner_class = select_generic_executable(workflow, "injcombiner")
-        injcombiner_jobs = injcombiner_class(cp, "injcombiner", ifo=ifos,
-                                             out_dir=output_dir, tags=tags)
-
-        injfinder_outs = FileList([])
-        for inj_tag in inj_tags:
-            triggers = FileList([file for file in inj_trig_files \
-                                 if inj_tag in file.tag_str])
-            injections = FileList([file for file in inj_files \
-                                   if inj_tag in file.tag_str])
-            trig_cache = [file for file in inj_trig_caches \
-                          if inj_tag in file.tag_str][0]
-            inj_cache = [file for file in inj_caches \
-                         if inj_tag in file.tag_str][0]
-            injfinder_node, curr_outs = injfinder_jobs.create_node(\
-                    triggers, injections, segment_dir, tags=[inj_tag])
-            injfinder_nodes.append(injfinder_node)
-            pp_nodes.append(injfinder_node)
-            workflow.add_node(injfinder_node)
-            injfinder_outs.extend(curr_outs)
-            if "DETECTION" not in curr_outs[0].tagged_description:
-                injcombiner_parent_nodes.append(injfinder_node)
-            else:
-                inj_sbv_plotter_parent_nodes.append(injfinder_node)
-
-        pp_outs.extend(injfinder_outs)
-
-        # Make injfinder output cache
-        fm_cache = File(ifos, "foundmissed", full_segment,
-                        extension="lcf", directory=output_dir)
-        fm_cache.PFN(fm_cache.cache_entry.path, site="local")
-        injfinder_outs.convert_to_lal_cache().tofile(\
-                open(fm_cache.storage_path, "w"))
-        pp_outs.extend(FileList([fm_cache]))
-
-        # Set up injcombiner jobs
-        injcombiner_outs = FileList([f for f in injfinder_outs \
-                                     if "DETECTION" in f.tag_str])
-        injcombiner_tags = [inj_tag for inj_tag in inj_tags \
-                            if "DETECTION" not in inj_tag]
-        injcombiner_out_tags = [i.tag_str.rsplit('_', 1)[0] for i in \
-                                injcombiner_outs if "FOUND" in i.tag_str]
-        injcombiner_nodes = []
-
-        for injcombiner_tag in injcombiner_tags:
-            max_inc = cp.get_opt_tags("injections", "max-inc",
-                                      [injcombiner_tag])
-            inj_str = injcombiner_tag.replace("INJ", "")
-            inputs = FileList([f for f in injfinder_outs \
-                               if injcombiner_tag in f.tagged_description])
-            injcombiner_node, curr_outs = injcombiner_jobs.create_node(\
-                    fm_cache, inputs, inj_str, max_inc, workflow.analysis_time)
-            injcombiner_nodes.append(injcombiner_node)
-            injcombiner_out_tags.append("%s_FILTERED_%s"
-                                        % (inj_str.split(max_inc)[0], max_inc))
-            injcombiner_outs.extend(curr_outs)
-            pp_outs.extend(curr_outs)
-            pp_nodes.append(injcombiner_node)
-            workflow.add_node(injcombiner_node)
-            for parent_node in injcombiner_parent_nodes:
-                dep = dax.Dependency(parent=parent_node._dax_node,
-                                     child=injcombiner_node._dax_node)
-                workflow._adag.addDependency(dep)
+    if do_injections:
+        workflow, injfinder_nodes, injfinder_outs, fm_cache, \
+                injcombiner_nodes, injcombiner_outs, injcombiner_out_tags, \
+                inj_sbv_plotter_parent_nodes, pp_nodes, pp_outs = \
+                setup_coh_PTF_injections_pp(workflow, inj_trig_files,
+                        inj_files, inj_trig_caches, inj_caches, pp_nodes,
+                        pp_outs, inj_tags, output_dir, segment_dir, ifos,
+                        tags=tags)
 
         # Initialise injection_efficiency class
         inj_efficiency_jobs = efficiency_class(cp, "inj_efficiency", ifo=ifos,
@@ -975,8 +924,7 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
                 offsource_clustered = clust_file
                 off_node = sbv_plotter_node
 
-            if out_tag == "OFFSOURCE" and \
-                    cp.has_section("workflow-injections"):
+            if out_tag == "OFFSOURCE" and do_injections:
                 found_inj_files = FileList([file for file in injcombiner_outs \
                                             if "FOUND" in file.tag_str])
                 for curr_injs in found_inj_files:
@@ -1017,7 +965,7 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
                                  child=efficiency_node._dax_node)
             workflow._adag.addDependency(dep)
 
-            if cp.has_section("workflow-injections"):
+            if do_injections:
                 for tag in injcombiner_out_tags:
                     if "_FILTERED_" in tag:
                         inj_set_tag = [t for t in inj_tags if \
@@ -1078,7 +1026,7 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
         workflow._adag.addDependency(dep)
 
         # Adding inj_efficiency job
-        if cp.has_section("workflow-injections"):
+        if do_injections:
             for tag in injcombiner_out_tags:
                 if "_FILTERED_" in tag:
                     inj_set_tag = [t for t in inj_tags if \
@@ -1114,7 +1062,7 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
     #FIXME: We may want this job to run even if some jobs fail
     html_summary_jobs = html_summary_class(cp, "html_summary", ifo=ifos,
                                            out_dir=output_dir, tags=tags)
-    if cp.has_section("workflow-injections"):
+    if do_injections:
         tuning_tags = [inj_tag for inj_tag in injcombiner_out_tags \
                        if "DETECTION" in inj_tag]
         exclusion_tags = [inj_tag for inj_tag in injcombiner_out_tags \
