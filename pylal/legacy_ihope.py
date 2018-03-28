@@ -673,6 +673,7 @@ class PyGRBMakeSummaryPage(LegacyAnalysisExecutable):
             tags = []
         super(PyGRBMakeSummaryPage, self).__init__(cp, name, universe, ifo=ifo,
               out_dir=out_dir, tags=tags)
+        self.cp = cp
         self.ifos = ifo
         self.num_threads = 1
 
@@ -688,6 +689,11 @@ class PyGRBMakeSummaryPage(LegacyAnalysisExecutable):
         node.add_opt('--ra', self.cp.get('workflow', 'ra'))
         node.add_opt('--dec', self.cp.get('workflow', 'dec'))
         node.add_opt('--ifo-tag', self.ifos)
+
+        if self.cp.has_option_tag('inspiral', 'do-short-slides',
+                                  'coherent_no_injections') \
+                or self.cp.has_option('workflow', 'do-long-slides'):
+            node.add_opt('--time-slides')
 
         if tuning_tags is not None:
             node.add_opt('--tuning-injections', ','.join(tuning_tags))
