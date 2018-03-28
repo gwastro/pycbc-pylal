@@ -223,10 +223,10 @@ def setup_coh_PTF_injections_pp(wf, inj_trigger_files, inj_files,
 
 def setup_coh_PTF_plotting_jobs(workflow, unclust_file, clust_file,
         sbv_plotter_jobs, efficiency_jobs, inj_efficiency_jobs,
-        trig_cluster_node, off_node, offsource_clustered, injfinder_nodes,
-        injcombiner_nodes, dep_nodes, injcombiner_outs,
-        inj_sbv_plotter_parent_nodes, inj_tags, injcombiner_out_tags, pp_nodes,
-        output_dir, segment_dir, ifos, out_tag, do_injs=False, tags=None):
+        off_node, dep_node, offsource_clustered, injfinder_nodes,
+        injcombiner_nodes, injcombiner_outs, inj_sbv_plotter_parent_nodes,
+        inj_tags, injcombiner_out_tags, pp_nodes, output_dir, segment_dir,
+        ifos, out_tag, do_injs=False, tags=None):
     """
     Creates signal-based veto and efficiency jobs
     """
@@ -238,8 +238,8 @@ def setup_coh_PTF_plotting_jobs(workflow, unclust_file, clust_file,
                                                         tags=sbv_out_tags)
         pp_nodes.append(sbv_plotter_node)
         workflow.add_node(sbv_plotter_node)
-        for dep_node in dep_nodes:
-            dep = dax.Dependency(parent=dep_node._dax_node,
+        for n in set((off_node, dep_node)):
+            dep = dax.Dependency(parent=n._dax_node,
                                  child=sbv_plotter_node._dax_node)
             workflow._adag.addDependency(dep)
 
@@ -283,12 +283,11 @@ def setup_coh_PTF_plotting_jobs(workflow, unclust_file, clust_file,
                 offsource_clustered, segment_dir, tags=[out_tag])
         pp_nodes.append(efficiency_node)
         workflow.add_node(efficiency_node)
-        dep = dax.Dependency(parent=off_node._dax_node,
+        dep = dax.Dependency(parent=dep_node._dax_node,
                              child=efficiency_node._dax_node)
         workflow._adag.addDependency(dep)
 
         if do_injs:
-            logging.info(clust_file.name)
             for tag in injcombiner_out_tags:
                 if "_FILTERED_" in tag:
                     inj_set_tag = [t for t in inj_tags if \
@@ -307,7 +306,7 @@ def setup_coh_PTF_plotting_jobs(workflow, unclust_file, clust_file,
                                                        inj_set_tag])
                 pp_nodes.append(inj_efficiency_node)
                 workflow.add_node(inj_efficiency_node)
-                dep = dax.Dependency(parent=off_node._dax_node,
+                dep = dax.Dependency(parent=dep_node._dax_node,
                                      child=inj_efficiency_node._dax_node)
                 workflow._adag.addDependency(dep)
                 for injcombiner_node in injcombiner_nodes:
@@ -420,345 +419,13 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
         inj_efficiency_jobs = efficiency_class(cp, "inj_efficiency", ifo=ifos,
                                                out_dir=output_dir, tags=tags)
 
-    # Set up trig_combiner job
+    # Set up main trig_combiner class and tags
     trig_combiner_out_tags = ["OFFSOURCE", "ONSOURCE", "ALL_TIMES"]
     if all("COHERENT_NO_INJECTIONS" in t.name for t in trig_files) and \
             cp.has_option_tag("inspiral", "do-short-slides",
                               "coherent_no_injections"):
         trig_combiner_out_tags.extend(["ZEROLAG_OFF", "ZEROLAG_ALL"])
     
-    trig_combiner_jobs = trig_combiner_class(cp, "trig_combiner", ifo=ifos, 
-                                             out_dir=output_dir, tags=tags)
-    trig_combiner_node, trig_combiner_outs = trig_combiner_jobs.create_node(\
-            trig_files, segment_dir, workflow.analysis_time,
-            out_tags=trig_combiner_out_tags, tags=tags)
-    pp_nodes.append(trig_combiner_node)
-    workflow.add_node(trig_combiner_node)
-    pp_outs.extend(trig_combiner_outs)
-
-    # Initialise trig_cluster class
-    trig_cluster_outs = FileList([])
-    trig_cluster_jobs = trig_cluster_class(cp, "trig_cluster", ifo=ifos,
-                                           out_dir=output_dir, tags=tags)
-
-    # Set up trig_cluster jobs
-    trig_cluster_nodes = []
-    for out_tag in trig_combiner_out_tags:
-        unclust_file = [f for f in trig_combiner_outs \
-                        if out_tag in f.tag_str][0]
-        trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
-                unclust_file)
-        trig_cluster_outs.extend(curr_outs)
-        clust_file = curr_outs[0]
-        trig_cluster_nodes.append(trig_cluster_node)
-        pp_nodes.append(trig_cluster_node)
-        workflow.add_node(trig_cluster_node)
-        dep = dax.Dependency(parent=trig_combiner_node._dax_node,
-                             child=trig_cluster_node._dax_node)
-        workflow._adag.addDependency(dep)
-        if ts_trig_files is None:
-            off_node = trig_combiner_all_node
-            offsource_clustered = clust_file
-
-    # Are we doing time slides?
-    if ts_trig_files is not None:
-        trig_combiner_ts_nodes = []
-        trig_cluster_ts_nodes = []
-        trig_cluster_all_times_nodes = []
-        ts_all_times_outs = FileList([out for out in trig_cluster_outs
-                                      if "ALL_TIMES" in out.tag_str])
-        trig_combiner_ts_out_tags = ["ALL_TIMES", "OFFSOURCE"]
-        ts_tags = list(set([[ts_tag for ts_tag in ts_trig_file.tags
-                             if "SLIDE" in ts_tag][0]
-                            for ts_trig_file in ts_trig_files]))
-        for ts_tag in ts_tags:
-            # Do one slide at a time
-            ts_trigs = FileList([ts_trig_file for ts_trig_file in ts_trig_files
-                                 if ts_tag in ts_trig_file.tags])
-            trig_combiner_ts_node, trig_combiner_ts_outs = \
-                    trig_combiner_jobs.create_node(ts_trigs, segment_dir,
-                            workflow.analysis_time, slide_tag=ts_tag,
-                            out_tags=trig_combiner_ts_out_tags, tags=tags)
-            trig_combiner_ts_nodes.append(trig_combiner_ts_node)
-            pp_nodes.append(trig_combiner_ts_node)
-            workflow.add_node(trig_combiner_ts_node)
-            pp_outs.extend(trig_combiner_ts_outs)
-
-            # Set up trig combiner jobs for each timeslide
-            for ts_out_tag in trig_combiner_ts_out_tags:
-                unclust_file = [f for f in trig_combiner_ts_outs \
-                                if ts_out_tag in f.tag_str][0]
-                trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
-                        unclust_file)
-                trig_cluster_outs.extend(curr_outs)
-                clust_file = curr_outs[0]
-                trig_cluster_ts_nodes.append(trig_cluster_node)
-                pp_nodes.append(trig_cluster_node)
-                workflow.add_node(trig_cluster_node)
-                dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
-                                     child=trig_cluster_node._dax_node)
-                workflow._adag.addDependency(dep)        
-                if ts_out_tag == "ALL_TIMES":
-                    trig_cluster_all_times_nodes.append(trig_cluster_node)
-                    ts_all_times_outs.extend(FileList([clust_file]))
-
-        # Combine all timeslides
-        trig_combiner_all_node, trig_combiner_all_outs = \
-                trig_combiner_jobs.create_node(ts_all_times_outs, segment_dir,
-                            workflow.analysis_time, slide_tag="ALL_SLIDES",
-                            out_tags=trig_combiner_ts_out_tags, tags=tags)
-        pp_nodes.append(trig_combiner_all_node)
-        workflow.add_node(trig_combiner_all_node)
-        for trig_cluster_ts_node in trig_cluster_all_times_nodes:
-            dep = dax.Dependency(parent=trig_cluster_ts_node._dax_node,
-                                 child=trig_combiner_all_node._dax_node)
-            workflow._adag.addDependency(dep)        
-
-        for out_tag in trig_combiner_ts_out_tags:
-            trig_cluster_outs = FileList([f for f in trig_cluster_outs
-                                          if out_tag not in f.tag_str])
-        trig_cluster_outs.extend(trig_combiner_all_outs)
-        off_node = trig_combiner_all_node
-        offsource_clustered = [f for f in trig_cluster_outs
-                               if "OFFSOURCE" in f.tag_str
-                               and "ZERO_LAG" not in f.tag_str][0]
-
-    # Initialise sbv_plotter class
-    sbv_plotter_outs = FileList([])
-    sbv_plotter_jobs = sbv_plotter_class(cp, "sbv_plotter", ifo=ifos,
-                                         out_dir=output_dir, tags=tags)
-
-    # Initialise efficiency class
-    efficiency_outs = FileList([])
-    efficiency_jobs = efficiency_class(cp, "efficiency", ifo=ifos,
-                                       out_dir=output_dir, tags=tags)
-
-    # Add sbv_plotter and efficiency jobs
-    for out_tag in trig_combiner_out_tags:
-        clust_file = [f for f in trig_cluster_outs \
-                      if out_tag in f.tag_str][0]
-        #trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
-        #        unclust_file)
-        #trig_cluster_outs.extend(curr_outs)
-        #clust_file = curr_outs[0]
-        #pp_nodes.append(trig_cluster_node)
-        #workflow.add_node(trig_cluster_node)
-        #dep = dax.Dependency(parent=trig_combiner_node._dax_node,
-        #                     child=trig_cluster_node._dax_node)
-        #workflow._adag.addDependency(dep)
-
-        if ts_trig_files is not None:
-            final_trig_nodes = [trig_combiner_all_node]
-        else:
-            final_trig_nodes = [f for f in trig_cluster_nodes
-                                if out_tag in f.tag]
-        workflow, pp_nodes = setup_coh_PTF_plotting_jobs(workflow, 
-                unclust_file, clust_file, sbv_plotter_jobs, efficiency_jobs,
-                inj_efficiency_jobs, trig_cluster_node, off_node,
-                offsource_clustered, injfinder_nodes, injcombiner_nodes,
-                final_trig_nodes, injcombiner_outs,
-                inj_sbv_plotter_parent_nodes, inj_tags, injcombiner_out_tags,
-                pp_nodes, output_dir, segment_dir, ifos, out_tag,
-                do_injs=do_injections, tags=tags)
-
-    # Add further trig_cluster jobs for trials
-    trial = 1
-
-    while trial <= num_trials:
-        trial_tag = "OFFTRIAL_%d" % trial
-        unclust_file = [f for f in trig_combiner_outs \
-                        if trial_tag in f.tag_str][0]
-        trig_cluster_node, clust_outs = trig_cluster_jobs.create_node(\
-                unclust_file)
-        clust_file = clust_outs[0]
-        trig_cluster_outs.extend(clust_outs)
-        pp_nodes.append(trig_cluster_node)
-        workflow.add_node(trig_cluster_node)
-        dep = dax.Dependency(parent=trig_combiner_node._dax_node,
-                             child=trig_cluster_node._dax_node)
-        workflow._adag.addDependency(dep)
-
-        # Add efficiency job
-        efficiency_node = efficiency_jobs.create_node(clust_file,
-                offsource_clustered, segment_dir, tags=[trial_tag])
-        pp_nodes.append(efficiency_node)
-        workflow.add_node(efficiency_node)
-        dep = dax.Dependency(parent=off_node._dax_node,
-                             child=efficiency_node._dax_node)
-        workflow._adag.addDependency(dep)
-        dep = dax.Dependency(parent=trig_cluster_node._dax_node,
-                             child=efficiency_node._dax_node)
-        workflow._adag.addDependency(dep)
-
-        # Adding inj_efficiency job
-        if do_injections:
-            for tag in injcombiner_out_tags:
-                if "_FILTERED_" in tag:
-                    inj_set_tag = [t for t in inj_tags if \
-                                   str(tag).replace("_FILTERED_", "") in t][0]
-                else:
-                    inj_set_tag = str(tag)
-
-                found_file = [file for file in injcombiner_outs \
-                              if tag + "_FOUND" in file.tag_str][0]
-                missed_file = [file for file in injcombiner_outs \
-                               if tag + "_MISSED" in file.tag_str][0]
-                inj_efficiency_node = inj_efficiency_jobs.create_node(\
-                        clust_file, offsource_clustered, segment_dir,
-                        found_file, missed_file, tags=[trial_tag, tag,
-                                                       inj_set_tag])
-                pp_nodes.append(inj_efficiency_node)
-                workflow.add_node(inj_efficiency_node)
-                dep = dax.Dependency(parent=off_node._dax_node,
-                                     child=inj_efficiency_node._dax_node)
-                workflow._adag.addDependency(dep)
-                for injcombiner_node in injcombiner_nodes:
-                    dep = dax.Dependency(parent=injcombiner_node._dax_node,
-                                         child=inj_efficiency_node._dax_node)
-                    workflow._adag.addDependency(dep)
-                for injfinder_node in injfinder_nodes:
-                    dep = dax.Dependency(parent=injfinder_node._dax_node,
-                                         child=inj_efficiency_node._dax_node)
-                    workflow._adag.addDependency(dep)
-
-        trial += 1
-
-    # Initialise html_summary class and set up job
-    #FIXME: We may want this job to run even if some jobs fail
-    html_summary_jobs = html_summary_class(cp, "html_summary", ifo=ifos,
-                                           out_dir=output_dir, tags=tags)
-    if do_injections:
-        tuning_tags = [inj_tag for inj_tag in injcombiner_out_tags \
-                       if "DETECTION" in inj_tag]
-        exclusion_tags = [inj_tag for inj_tag in injcombiner_out_tags \
-                          if "DETECTION" not in inj_tag]
-        html_summary_node = html_summary_jobs.create_node(c_file=config_file,
-                tuning_tags=tuning_tags, exclusion_tags=exclusion_tags,
-                seg_plot=segs_plot, html_dir=html_dir)
-    else:
-        html_summary_node = html_summary_jobs.create_node(c_file=config_file,
-                seg_plot=segs_plot, html_dir=html_dir)
-    workflow.add_node(html_summary_node)
-    for pp_node in pp_nodes:
-        dep = dax.Dependency(parent=pp_node._dax_node,
-                             child=html_summary_node._dax_node)
-        workflow._adag.addDependency(dep)
-
-    # Make the open box shell script
-    try:
-        open_box_cmd = html_summary_node.executable.get_pfn() + " "
-    except:
-        exe_path = html_summary_node.executable.get_pfn('nonlocal').replace(\
-                "https", "http")
-        exe_name = exe_path.rsplit('/', 1)[-1]
-        open_box_cmd = "wget %s\n" % exe_path
-        open_box_cmd += "chmod 500 ./%s\n./%s " % (exe_name, exe_name)
-    open_box_cmd += ' '.join(html_summary_node._args + \
-                             html_summary_node._options)
-    open_box_cmd += " --open-box"
-    open_box_path = "%s/open_the_box.sh" % output_dir
-    f = open(open_box_path, "w")
-    f.write("#!/bin/sh\n%s" % open_box_cmd)
-    f.close()
-    os.chmod(open_box_path, 0500)
-
-    pp_outs.extend(trig_cluster_outs)
-
-    return pp_outs
-
-
-def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
-        ts_trig_files, inj_trig_files, inj_files, inj_trig_caches, inj_caches,
-        config_file, output_dir, html_dir, segment_dir, segs_plot, ifos,
-        inj_tags=None, tags=None):
-    """
-    This module sets up a stripped down post-processing stage for the online
-    workflow, using a coh_PTF style set up. This consists of running
-    trig_combiner to find coherent triggers, and trig_cluster to cluster them.
-    This process may be done in two stages to reduce memory requirements. It
-    also runs injfinder to look for injections, and injcombiner to calculate
-    injection statistics. Finally, efficiency and sbv_plotter jobs calculate
-    efficiency and signal based veto statistics and make plots.
-    
-    Parameters
-    -----------
-    workflow : pycbc.workflow.core.Workflow
-        The Workflow instance that the coincidence jobs will be added to.
-    trig_files : pycbc.workflow.core.FileList
-        A FileList of the trigger files from the on/off source analysis jobs.
-    trig_cache : pycbc.workflow.core.File
-        A cache file pointing to the trigger files.
-    ts_trig_files : pycbc.workflow.core.FileList
-        A FileList of the trigger files from the timeslide analysis jobs.
-    inj_trig_files : pycbc.workflow.core.FileList
-        A FileList of the trigger files produced by injection jobs.
-    inj_files : pycbc.workflow.core.FileList
-        A FileList of the injection set files.
-    inj_trig_caches : pycbc.workflow.core.FileList
-        A FileList containing the cache files that point to the injection
-        trigger files.
-    inj_caches : pycbc.workflow.core.FileList
-        A FileList containing cache files that point to the injection files.
-    config_file : pycbc.workflow.core.File
-        The parsed configuration file.
-    output_dir : path
-        The directory in which output files will be stored.
-    html_dir : path
-        The directory where the result webpage will be placed.
-    segment_dir : path
-        The directory in which data segment information is stored.
-    segs_plot : pycbc.workflow.core.File
-        The plot showing the analysis segments for each IFO around the GRB time.
-        This is produced at the time of workflow generation.
-    ifos : list
-        A list containing the analysis interferometers.
-    inj_tags : list
-        List containing the strings used to uniquely identify the injection
-        sets included in the analysis.
-    tags : list of strings (optional, default = [])
-        A list of the tagging strings that will be used for all jobs created
-        by this call to the workflow. An example might be ['POSTPROC1'] or
-        ['DENTYSNEWPOSTPROC']. This will be used in output names.
-
-    Returns
-    --------
-    pp_outs : pycbc.workflow.core.FileList
-        A list of the output from this stage.
-    """
-    if inj_tags is None:
-        inj_tags = []
-    if tags is None:
-        tags = []
-    cp = workflow.cp
-    full_segment = trig_files[0].segment
-    trig_name = cp.get("workflow", "trigger-name")
-    grb_string = "GRB" + trig_name
-    num_trials = int(cp.get("trig_combiner", "num-trials"))
-    do_injections = cp.has_section("workflow-injections")
-
-    pp_outs = FileList([])
-    pp_nodes = []
-
-    # Set up needed exe classes
-    trig_combiner_class = select_generic_executable(workflow, "trig_combiner")
-
-    trig_cluster_class = select_generic_executable(workflow, "trig_cluster")
-
-    sbv_plotter_class = select_generic_executable(workflow, "sbv_plotter")
-    
-    efficiency_class = select_generic_executable(workflow, "efficiency")
-
-    #horizon_dist_class = select_generic_executable(workflow, "horizon_dist")
-
-    html_summary_class = select_generic_executable(workflow, "html_summary")
-
-    # Set up trig_combiner job
-    trig_combiner_out_tags = ["OFFSOURCE", "ONSOURCE", "ALL_TIMES"]
-    if all("COHERENT_NO_INJECTIONS" in t.name for t in trig_files) and \
-            cp.has_option_tag("inspiral", "do-short-slides",
-                              "coherent_no_injections"):
-        trig_combiner_out_tags.extend(["ZEROLAG_OFF", "ZEROLAG_ALL"])
-
     trig_combiner_jobs = trig_combiner_class(cp, "trig_combiner", ifo=ifos, 
                                              out_dir=output_dir, tags=tags)
 
@@ -824,15 +491,55 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
     trig_cluster_jobs = trig_cluster_class(cp, "trig_cluster", ifo=ifos,
                                            out_dir=output_dir, tags=tags)
 
+    # Initialise sbv_plotter class
+    sbv_plotter_outs = FileList([])
+    sbv_plotter_jobs = sbv_plotter_class(cp, "sbv_plotter", ifo=ifos,
+                                         out_dir=output_dir, tags=tags)
+
+    # Initialise efficiency class
+    efficiency_outs = FileList([])
+    efficiency_jobs = efficiency_class(cp, "efficiency", ifo=ifos,
+                                       out_dir=output_dir, tags=tags)
+
+    # Set up trig_cluster jobs
+    trig_cluster_nodes = []
+    for out_tag in trig_combiner_out_tags:
+        unclust_file = [f for f in trig_combiner_outs \
+                        if out_tag in f.tag_str][0]
+        trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
+                unclust_file)
+        trig_cluster_outs.extend(curr_outs)
+        clust_file = curr_outs[0]
+        trig_cluster_nodes.append(trig_cluster_node)
+        pp_nodes.append(trig_cluster_node)
+        workflow.add_node(trig_cluster_node)
+        dep = dax.Dependency(parent=trig_combiner_node._dax_node,
+                             child=trig_cluster_node._dax_node)
+        workflow._adag.addDependency(dep)
+        # Are we not doing time slides?
+        if ts_trig_files is None:
+            if out_tag == "OFFSOURCE":
+                off_node = trig_cluster_node
+                offsource_clustered = clust_file
+
+            # Add sbv_plotter and efficiency jobs
+            workflow, pp_nodes = setup_coh_PTF_plotting_jobs(workflow, 
+                    unclust_file, clust_file, sbv_plotter_jobs,
+                    efficiency_jobs, inj_efficiency_jobs, off_node,
+                    trig_cluster_node, offsource_clustered, injfinder_nodes,
+                    injcombiner_nodes, injcombiner_outs,
+                    inj_sbv_plotter_parent_nodes, inj_tags,
+                    injcombiner_out_tags, pp_nodes, output_dir, segment_dir,
+                    ifos, out_tag, do_injs=do_injections, tags=tags)
+
+    # If doing time slides
     if ts_trig_files is not None:
-        # We have long timeslides, so process them too
         trig_combiner_ts_nodes = []
-        trig_cluster_ts_outs = FileList([])
-        ts_all_times_outs = FileList([out for out in trig_combiner_outs
+        trig_cluster_ts_nodes = []
+        trig_cluster_all_times_nodes = []
+        ts_all_times_outs = FileList([out for out in trig_cluster_outs
                                       if "ALL_TIMES" in out.tag_str])
-        ts_all_times_clust_outs = FileList([out for out in trig_cluster_outs
-                                            if "ALL_TIMES" in out.tag_str])
-        trig_combiner_ts_out_tags = ["OFFSOURCE", "ALL_TIMES"]
+        trig_combiner_ts_out_tags = ["ALL_TIMES", "OFFSOURCE"]
         ts_tags = list(set([[ts_tag for ts_tag in ts_trig_file.tags
                              if "SLIDE" in ts_tag][0]
                             for ts_trig_file in ts_trig_files]))
@@ -901,87 +608,53 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
                                 if ts_out_tag in f.tag_str][0]
                 trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
                         unclust_file)
-                trig_cluster_ts_outs.extend(curr_outs)
+                trig_cluster_outs.extend(curr_outs)
                 clust_file = curr_outs[0]
+                trig_cluster_ts_nodes.append(trig_cluster_node)
                 pp_nodes.append(trig_cluster_node)
                 workflow.add_node(trig_cluster_node)
                 dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
                                      child=trig_cluster_node._dax_node)
                 workflow._adag.addDependency(dep)        
+                if ts_out_tag == "ALL_TIMES":
+                    trig_cluster_all_times_nodes.append(trig_cluster_node)
+                    ts_all_times_outs.extend(FileList([clust_file]))
 
-            ts_all_times_clust_outs.extend(FileList([out for out in 
-                    trig_cluster_ts_outs if "ALL_TIMES" in out.tag_str]))
-
-        # Combine all offsources from timeslides
+        # Combine all timeslides
         trig_combiner_all_node, trig_combiner_all_outs = \
-                trig_combiner_jobs.create_node(ts_all_times_clust_outs, segment_dir,
-                            workflow.analysis_time,
+                trig_combiner_jobs.create_node(ts_all_times_outs, segment_dir,
+                            workflow.analysis_time, slide_tag="ALL_SLIDES",
                             out_tags=trig_combiner_ts_out_tags, tags=tags)
         pp_nodes.append(trig_combiner_all_node)
         workflow.add_node(trig_combiner_all_node)
-        for trig_combiner_ts_node in trig_combiner_ts_nodes:
-            dep = dax.Dependency(parent=trig_combiner_ts_node._dax_node,
+        for trig_cluster_ts_node in trig_cluster_all_times_nodes:
+            dep = dax.Dependency(parent=trig_cluster_ts_node._dax_node,
                                  child=trig_combiner_all_node._dax_node)
             workflow._adag.addDependency(dep)        
 
-    if do_injections:
-        workflow, injfinder_nodes, injfinder_outs, fm_cache, \
-                injcombiner_nodes, injcombiner_outs, injcombiner_out_tags, \
-                inj_sbv_plotter_parent_nodes, pp_nodes, pp_outs = \
-                setup_coh_PTF_injections_pp(workflow, inj_trig_files,
-                        inj_files, inj_trig_caches, inj_caches, pp_nodes,
-                        pp_outs, inj_tags, output_dir, segment_dir, ifos,
-                        tags=tags)
+        for out_tag in trig_combiner_ts_out_tags:
+            trig_cluster_outs = FileList([f for f in trig_cluster_outs
+                                          if out_tag not in f.tag_str])
+        trig_cluster_outs.extend(trig_combiner_all_outs)
+        off_node = trig_combiner_all_node
+        offsource_clustered = [f for f in trig_cluster_outs
+                               if "OFFSOURCE" in f.tag_str
+                               and "ZERO_LAG" not in f.tag_str][0]
 
-        # Initialise injection_efficiency class
-        inj_efficiency_jobs = efficiency_class(cp, "inj_efficiency", ifo=ifos,
-                                               out_dir=output_dir, tags=tags)
+        # Add sbv_plotter and efficiency jobs
+        for out_tag in trig_combiner_out_tags:
+            clust_file = [f for f in trig_cluster_outs \
+                          if out_tag in f.tag_str][0]
 
-    # Initialise sbv_plotter class
-    sbv_plotter_outs = FileList([])
-    sbv_plotter_jobs = sbv_plotter_class(cp, "sbv_plotter", ifo=ifos,
-                                         out_dir=output_dir, tags=tags)
+            workflow, pp_nodes = setup_coh_PTF_plotting_jobs(workflow, 
+                    unclust_file, clust_file, sbv_plotter_jobs,
+                    efficiency_jobs, inj_efficiency_jobs, off_node, off_node,
+                    offsource_clustered, injfinder_nodes, injcombiner_nodes,
+                    injcombiner_outs, inj_sbv_plotter_parent_nodes, inj_tags,
+                    injcombiner_out_tags, pp_nodes, output_dir, segment_dir,
+                    ifos, out_tag, do_injs=do_injections, tags=tags)
 
-    # Initialise efficiency class
-    efficiency_outs = FileList([])
-    efficiency_jobs = efficiency_class(cp, "efficiency", ifo=ifos,
-                                       out_dir=output_dir, tags=tags)
-
-    # Add trig_cluster jobs and their corresponding plotting jobs
-    for out_tag in trig_combiner_out_tags:
-        unclust_file = [f for f in trig_combiner_outs \
-                        if out_tag in f.tag_str][0]
-        trig_cluster_node, curr_outs = trig_cluster_jobs.create_node(\
-                unclust_file)
-        trig_cluster_outs.extend(curr_outs)
-        clust_file = curr_outs[0]
-        pp_nodes.append(trig_cluster_node)
-        workflow.add_node(trig_cluster_node)
-        dep = dax.Dependency(parent=trig_combiner_node._dax_node,
-                             child=trig_cluster_node._dax_node)
-        workflow._adag.addDependency(dep)
-
-        if out_tag == "OFFSOURCE":
-            offsource_clustered = clust_file
-            off_node = sbv_plotter_node
-
-        if ts_trig_files is not None:
-            final_trig_nodes = [trig_combiner_all_node]
-        else:
-            final_trig_nodes = [f for f in trig_cluster_nodes
-                                if out_tag in f.tag]
-        workflow, pp_nodes = setup_coh_PTF_plotting_jobs(workflow, 
-                unclust_file, clust_file, sbv_plotter_jobs, efficiency_jobs,
-                inj_efficiency_jobs, trig_cluster_node, off_node,
-                offsource_clustered, injfinder_nodes, injcombiner_nodes,
-                final_trig_nodes, injcombiner_outs,
-                inj_sbv_plotter_parent_nodes, inj_tags, injcombiner_out_tags,
-                pp_nodes, output_dir, segment_dir, ifos, out_tag,
-                do_injs=do_injections, tags=tags)
-
-    # Add further trig_cluster jobs for trials
     trial = 1
-
     while trial <= num_trials:
         trial_tag = "OFFTRIAL_%d" % trial
         unclust_file = [f for f in trig_combiner_outs \
@@ -1083,3 +756,4 @@ def setup_postproc_coh_PTF_online_workflow(workflow, trig_files, trig_cache,
     pp_outs.extend(trig_cluster_outs)
 
     return pp_outs
+
