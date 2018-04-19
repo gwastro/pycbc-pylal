@@ -421,9 +421,10 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
 
     # Set up main trig_combiner class and tags
     trig_combiner_out_tags = ["OFFSOURCE", "ONSOURCE", "ALL_TIMES"]
-    if all("COHERENT_NO_INJECTIONS" in t.name for t in trig_files) and \
+    slides = all("COHERENT_NO_INJECTIONS" in t.name for t in trig_files) and \
             cp.has_option_tag("inspiral", "do-short-slides",
-                              "coherent_no_injections"):
+                              "coherent_no_injections")
+    if slides:
         trig_combiner_out_tags.extend(["ZEROLAG_OFF", "ZEROLAG_ALL"])
     
     trig_combiner_jobs = trig_combiner_class(cp, "trig_combiner", ifo=ifos, 
@@ -725,10 +726,10 @@ def setup_postproc_coh_PTF_offline_workflow(workflow, trig_files, trig_cache,
                           if "DETECTION" not in inj_tag]
         html_summary_node = html_summary_jobs.create_node(c_file=config_file,
                 tuning_tags=tuning_tags, exclusion_tags=exclusion_tags,
-                seg_plot=segs_plot, html_dir=html_dir)
+                seg_plot=segs_plot, html_dir=html_dir, time_slides=slides)
     else:
         html_summary_node = html_summary_jobs.create_node(c_file=config_file,
-                seg_plot=segs_plot, html_dir=html_dir)
+                seg_plot=segs_plot, html_dir=html_dir, time_slides=slides)
     workflow.add_node(html_summary_node)
     for pp_node in pp_nodes:
         dep = dax.Dependency(parent=pp_node._dax_node,
