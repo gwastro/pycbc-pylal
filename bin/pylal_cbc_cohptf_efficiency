@@ -582,11 +582,12 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         if val > bestNR:
           numTrialsLouder += 1
     FAP = numTrialsLouder/totalTrials
+    pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP
 
     # Get null SNR of trigger
     nullsnr = trig.get_null_snr()
 
-    d = [ '%s-%s' % tuple(trigBin), chunkNum, trigSlideID, '%.2f' % FAP,\
+    d = [ '%s-%s' % tuple(trigBin), chunkNum, trigSlideID, pval,\
           '%.4f' % trig.get_end(),\
           '%.2f' % trig.mass1, '%.2f' % trig.mass2, '%.2f' % trig.mchirp,\
           '%.2f' % (np.degrees(trig.ra)), '%.2f'% (np.degrees(trig.dec)),\
@@ -745,14 +746,15 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
           numTrialsLouder += sum(timeBinVetoMaxBestNR[slideID][i] > \
                                  loudOnBestNR[bin[0]])
         FAP = numTrialsLouder/totalTrials
+        pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP
         loudOnFAP[bin[0]] = FAP
-        d = ['%s-%s' % tuple(bin), FAP, trig.get_end(),\
+        d = ['%s-%s' % tuple(bin), pval, trig.get_end(),\
              trig.mass1, trig.mass2, trig.mchirp,\
              np.degrees(trig.ra), np.degrees(trig.dec),\
              trig.snr, trig.chisq, trig.bank_chisq,\
              trig.cont_chisq, nullsnr] + \
             [trig.get_sngl_snr(ifo) for ifo in ifos] + [loudOnBestNR[bin[0]]]
-        file2.write('%s\n' % FAP)
+        file2.write('%s\n' % pval.replace('<', '&lt'))
         td.append(d)
 
       else:
