@@ -163,18 +163,6 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
   # get trigger files 
   if verbose: sys.stdout.write("\nFinding files...\n")
 
-  #if timeSlides:
-  #  slideCache = lal.Cache.fromfile(open(timeSlides, 'r'))
-  #  slideCache = slideCache.sieve(ifos=ifoTag, description=userTag)
-  #  if slideTag:
-  #    slideCache = slideCache.sieve(description=slideTag)
-  #  if len(slideCache)<1:
-  #    sys.stderr.write("No files found at %d.\n" % elapsed_time())
-  #    sys.exit(1)
-  #  else:
-  #    sys.stdout.write("%d files found at %d.\n"\
-  #                     % (len(slideCache), elapsed_time()))
-
   # set columns
   ifoAtt = { 'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t' }
   # set up columns
