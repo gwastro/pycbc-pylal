@@ -195,19 +195,19 @@ def parse_command_line():
                      help="The standard deviation to use when calculating the "\
                           "V1 calibration amplitude error.")
   calopts.add_option("-p", "--h1-dc-cal-error", action="store",\
-                     type="float", default=0,
+                     type="float", default=1.0,
                      help="The scaling factor to use when calculating the H1 "\
                            "calibration amplitude error.")
   calopts.add_option("-P", "--h2-dc-cal-error", action="store",\
-                     type="float", default=0,
+                     type="float", default=1.0,
                      help="The scaling factor to use when calculating the H2 "\
                            "calibration amplitude error.")
   calopts.add_option( "-r", "--l1-dc-cal-error", action="store",\
-                     type="float", default=0,
+                     type="float", default=1.0,
                      help="The scaling factor to use when calculating the L1 "\
                            "calibration amplitude error.")
   calopts.add_option("-R", "--v1-dc-cal-error", action="store",\
-                     type="float", default=0,
+                     type="float", default=1.0,
                      help="The scaling factor to use when calculating the V1 "\
                            "calibration amplitude error.")
 
