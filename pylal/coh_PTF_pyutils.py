@@ -95,7 +95,7 @@ def get_bestnr( trig, q=4.0, n=3.0, null_thresh=(4.25,6), snr_threshold=6.,\
                 return 0
 
     # get chisq reduced (new) SNR
-    bestNR = trig.get_bestnr(index=1, nhigh=n, \
+    bestNR = trig.get_bestnr(index=q, nhigh=n, \
              null_snr_threshold=null_thresh[0], \
              null_grad_thresh=null_grad_thresh, null_grad_val = null_grad_val)
 
