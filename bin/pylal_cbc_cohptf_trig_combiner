@@ -76,7 +76,7 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
                                         "(will be appended to output user tag")
 
   parser.add_argument("-T", "--num-trials", type=int, default=6,
-                      help="The number of off source trials")
+                      help="The number of off source trials, default: %(default)d")
 
   parser.add_argument("-p", "--trig-start-time", type=int, required=True,
                       help="The start time of the analysis segment")
@@ -86,8 +86,8 @@ coh_PTF_trig_combiner is designed to coalesce the triggers made from each elemen
                            "segment files")
 
   parser.add_argument("-o", "--output-dir", action="store", type=str,
-                      default=os.getcwd(), help="output directory, "
-                                                "default: %s" % os.getcwd())
+                      default=os.getcwd(),
+                      help="output directory, default: current working dir")
 
   parser.add_argument("-t", "--long-slides", action="store_true",
                       help="Are these triggers from long time slides?")
