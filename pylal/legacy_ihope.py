@@ -31,7 +31,7 @@ https://ldas-jobs.ligo.caltech.edu/~cbc/docs/pycbc/ahope.html
 
 import os
 import urlparse
-from pycbc_glue import segments
+from glue import segments
 from pycbc.workflow.core import Executable, File, FileList, Node
 
 
