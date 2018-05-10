@@ -42,10 +42,7 @@ class ExtractSimInspiralTableLIGOLWContentHandler(ligolw.PartialLIGOLWContentHan
   """
   def __init__(self,document):
     def filterfunc(name,attrs):
-      if name==ligolw.Table.tagName and attrs.has_key('Name'):
-        return 0==table.CompareTableNames(attrs.get('Name'), lsctables.SimInspiralTable.tableName)
-      else:
-        return False
+      return ligolw.PartialLIGOLWContentHandler(document, lambda name, attrs: name == lsctables.SimInspiralTable.tableName)
     ligolw.PartialLIGOLWContentHandler.__init__(self,document,filterfunc)
 
 
