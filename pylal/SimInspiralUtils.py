@@ -42,7 +42,7 @@ class ExtractSimInspiralTableLIGOLWContentHandler(ligolw.PartialLIGOLWContentHan
   """
   def __init__(self,document):
     def filterfunc(name,attrs):
-      return ligolw.PartialLIGOLWContentHandler(document, lambda name, attrs: name == lsctables.SimInspiralTable.tableName)
+      return lsctables.SimInspiralTable.CheckProperties(name, attrs)
     ligolw.PartialLIGOLWContentHandler.__init__(self,document,filterfunc)
 
 
