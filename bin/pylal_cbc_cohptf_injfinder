@@ -70,7 +70,7 @@ coh_PTF_injfinder will find and record found and missed injections for the given
 
   parser.add_argument("-o", "--output-dir", action="store", type=str,
                       default=os.getcwd(), help="output directory, "
-                                               "default: %default")
+                                               "default: %(default)s")
 
   parser.add_argument("-W", "--time-window", action="store", type=float,
                      default=0, help="The found time window")
@@ -85,7 +85,7 @@ coh_PTF_injfinder will find and record found and missed injections for the given
                      "if any SpinTaylor injections failed and remove them. If"
                      " not set, no injections will be removed.")
   parser.add_argument("-V", "--verbose", action="store_true", default=False,
-                     help="verbose output, default: %default")
+                     help="verbose output, default: %(default)s")
 
   args = parser.parse_args()
 
