@@ -165,13 +165,11 @@ def main( injCacheFile, outdir, maxIncl , injString , verbose=False ):
       currFTrigs = MultiInspiralUtils.ReadMultiInspiralFromFiles([found.path])
 
       for inj in currMInjs:
-        if inj.get_theta() < maxInclRad:
-          missedInjs.append(inj)
+        missedInjs.append(inj)
 
       for inj,trig in zip(currFInjs,currFTrigs):
-        if inj.get_theta() < maxInclRad:
-          foundInjs.append(inj)
-          foundTrigs.append(trig)
+        foundInjs.append(inj)
+        foundTrigs.append(trig)
 
 
   # prepare xmldocument 
