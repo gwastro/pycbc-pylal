@@ -181,7 +181,7 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   cols = ['geocent_end_time', 'geocent_end_time_ns', 'mass1', 'mass2',\
           'mchirp', 'f_lower', 'inclination', 'spin1x', 'spin1y', 'spin1z',\
           'spin2x', 'spin2y', 'spin2z', 'longitude', 'latitude', 'distance',\
-          'eff_dist_h','eff_dist_l','eff_dist_v']
+          'eff_dist_h','eff_dist_l','eff_dist_v', 'eff_dist_g']
   cols = [c for c in cols if c\
           in lsctables.SimInspiralTable.validcolumns.keys()]
   lsctables.SimInspiralTable.loadcolumns = cols

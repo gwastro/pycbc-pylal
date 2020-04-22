@@ -195,6 +195,10 @@ def parse_command_line():
                      type="float", default=0,
                      help="The standard deviation to use when calculating the "\
                           "V1 calibration amplitude error.")
+  calopts.add_option("-G", "--g1-cal-error", action="store",\
+                     type="float", default=0,
+                     help="The standard deviation to use when calculating the "\
+                          "G1 calibration amplitude error.")
   calopts.add_option("-p", "--h1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the H1 "\
@@ -210,6 +214,10 @@ def parse_command_line():
   calopts.add_option("-R", "--v1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the V1 "\
+                           "calibration amplitude error.")
+  calopts.add_option("-E", "--g1-dc-cal-error", action="store",\
+                     type="float", default=1.0,
+                     help="The scaling factor to use when calculating the G1 "\
                            "calibration amplitude error.")
 
   parser.add_option("-S", "--old-code", action="store_true", default=False,\
@@ -2093,11 +2101,13 @@ if __name__=='__main__':
   calErrs['H2']= opts.h2_cal_error
   calErrs['L1']= opts.l1_cal_error
   calErrs['V1']= opts.v1_cal_error
+  calErrs['G1']= opts.g1_cal_error
   calDCErrs       = {}
   calDCErrs['H1'] = opts.h1_dc_cal_error
   calDCErrs['H2'] = opts.h2_dc_cal_error
   calDCErrs['L1'] = opts.l1_dc_cal_error
   calDCErrs['V1'] = opts.v1_dc_cal_error
+  calDCErrs['G1'] = opts.g1_dc_cal_error
   oldCode      = opts.old_code
 
   nullt        = map(float, opts.null_snr_threshold.split(','))
