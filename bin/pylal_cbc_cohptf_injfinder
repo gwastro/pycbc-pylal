@@ -152,7 +152,7 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   # MultiInspiralTable
 
   # set columns
-  ifoAtt = { 'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t' }
+  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t', 'K1':'t'}
 
   # set up columns
   cols = ['end_time', 'end_time_ns', 'ifos', 'process_id', 'ra', 'dec', 'snr',\
@@ -181,7 +181,7 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   cols = ['geocent_end_time', 'geocent_end_time_ns', 'mass1', 'mass2',\
           'mchirp', 'f_lower', 'inclination', 'spin1x', 'spin1y', 'spin1z',\
           'spin2x', 'spin2y', 'spin2z', 'longitude', 'latitude', 'distance',\
-          'eff_dist_h','eff_dist_l','eff_dist_v', 'eff_dist_g']
+          'eff_dist_h','eff_dist_l','eff_dist_v', 'eff_dist_g', 'eff_dist_t']
   cols = [c for c in cols if c\
           in lsctables.SimInspiralTable.validcolumns.keys()]
   lsctables.SimInspiralTable.loadcolumns = cols

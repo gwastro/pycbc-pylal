@@ -180,7 +180,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
 
   # extract IFOS
   ifos = sorted(map(str, searchSumm[0].get_ifos()))
-  ifoAtt = { 'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t' } 
+  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t', 'K1':'t'} 
 
   tmp, slideDict, segmentDict = \
           MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles([trigFile])

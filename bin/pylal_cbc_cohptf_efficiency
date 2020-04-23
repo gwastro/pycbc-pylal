@@ -199,6 +199,10 @@ def parse_command_line():
                      type="float", default=0,
                      help="The standard deviation to use when calculating the "\
                           "G1 calibration amplitude error.")
+  calopts.add_option("-u", "--k1-cal-error", action="store",\
+                     type="float", default=0,
+                     help="The standard deviation to use when calculating the "\
+                          "K1 calibration amplitude error.")
   calopts.add_option("-p", "--h1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the H1 "\
@@ -218,6 +222,10 @@ def parse_command_line():
   calopts.add_option("-E", "--g1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the G1 "\
+                           "calibration amplitude error.")
+  calopts.add_option("-F", "--k1-dc-cal-error", action="store",\
+                     type="float", default=1.0,
+                     help="The scaling factor to use when calculating the K1 "\
                            "calibration amplitude error.")
 
   parser.add_option("-S", "--old-code", action="store_true", default=False,\
@@ -792,6 +800,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   if doinj:
 
     sites = [ifo[0] for ifo in ifos]
+    sites_alt = ["T" if ifo == "K1" else ifo[0] for ifo in ifos]
 
     missedInjs = SimInspiralUtils.ReadSimInspiralFromFiles([missedFile])\
             .veto(vetoes.union(vetoes.keys()))
@@ -819,8 +828,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundInjMchirp   = np.asarray(foundInjs.get_column('mchirp'))
     foundInjMtot     = np.asarray(foundInjs.get_column('mtotal'))
     foundInjEffSiteDist =\
-        dict((ifo, foundInjs.get_column('eff_dist_%s' % ifo.lower()))\
-             for ifo in sites)
+        dict((ifo, foundInjs.get_column('eff_dist_%s' % ifo_alt.lower()))\
+             for ifo, ifo_alt in zip(sites, sites_alt))
     foundInjEffDist  = np.power(np.power(\
                                   np.asarray(foundInjEffSiteDist.values()),-1)\
                                 .sum(0),-1)
@@ -1032,8 +1041,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     missedInjMchirp = np.asarray(missedInjs.get_column('mchirp'))
     missedInjEffSiteDist =\
-        dict((ifo, missedInjs.get_column('eff_dist_%s' % ifo.lower()))\
-             for ifo in sites)
+        dict((ifo, missedInjs.get_column('eff_dist_%s' % ifo_alt.lower()))\
+             for ifo, ifo_alt in zip(sites, sites_alt))
     missedInjEffDist  = np.power(np.power(\
                                   np.asarray(missedInjEffSiteDist.values()),-1)\
                                 .sum(0),-1)
@@ -1987,6 +1996,39 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     gMissed2Inc2 = 0.5 * np.pi - abs(gMissed2Inc - 0.5 * np.pi)
     missedInjInc2 = 0.5 * np.pi - abs(missedInjInc - 0.5 * np.pi)
 
+    # Site-specific plots
+    sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
+                 'T':'TAMA', 'K':'KAGRA'}
+
+    for site in sites:
+      fig = plt.figure()
+      ax = fig.gca()
+      if len(missedInjMchirp):
+        ax.scatter(missedInjMchirp, missedInjEffSiteDist[site],\
+                   c="k", marker='x', edgecolors='k')
+      if len(gMissed2Mchirp):
+        ax.scatter(gMissed2Mchirp, gMissed2EffSiteDist[site],\
+                  c="r", marker='x', edgecolors='r')
+      if len(gFoundMchirp):
+        ax.scatter(gFoundMchirp, gFoundEffSiteDist[site],\
+                  c="b", marker='x', edgecolors='g')
+      ax.grid()
+      if len(gIFARMchirp):
+        p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site],\
+                      c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
+                      marker='o', edgecolors='none', cmap=cm.plasma)
+      ax.semilogy()
+      if len(gIFARMchirp):
+        cb = ax.figure.colorbar(p)
+        cb.ax.set_ylabel("FAP")
+      ax.set_xlabel("Mchirp")
+      ax.set_ylabel("%s effective distance" % sitename[site])
+      ax.set_title("Injections found louder than loudest background event")
+      #ax.set_ylim([ 0.5, 1000 ])
+      fig.savefig("%s/found_missed_injections_effdist_%s.png"\
+                   % (outdir, site.lower()))
+      plt.close()
+
     fig = plt.figure()
     ax = fig.gca()
     if len(gFoundInc):
@@ -2097,17 +2139,19 @@ if __name__=='__main__':
   n            = opts.chisq_nhigh
   wavErr       = opts.waveform_error
   calErrs      = {}
+  calErrs['G1']= opts.g1_cal_error
   calErrs['H1']= opts.h1_cal_error
   calErrs['H2']= opts.h2_cal_error
+  calErrs['K1']= opts.k1_cal_error
   calErrs['L1']= opts.l1_cal_error
   calErrs['V1']= opts.v1_cal_error
-  calErrs['G1']= opts.g1_cal_error
   calDCErrs       = {}
+  calDCErrs['G1'] = opts.g1_dc_cal_error
   calDCErrs['H1'] = opts.h1_dc_cal_error
   calDCErrs['H2'] = opts.h2_dc_cal_error
+  calDCErrs['K1'] = opts.k1_dc_cal_error
   calDCErrs['L1'] = opts.l1_dc_cal_error
   calDCErrs['V1'] = opts.v1_dc_cal_error
-  calDCErrs['G1'] = opts.g1_dc_cal_error
   oldCode      = opts.old_code
 
   nullt        = map(float, opts.null_snr_threshold.split(','))
