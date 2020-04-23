@@ -38,6 +38,7 @@ import os,sys,matplotlib,numpy as np,re,copy,optparse
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc,cm,colors
+rc("image", cmap="cividis")
 from pylal import SimInspiralUtils,MultiInspiralUtils,plotutils,git_version
 from glue import segments,markup
 from pylal.dq import dqSegmentUtils,dqHTMLUtils
@@ -1588,7 +1589,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARMchirp):
       p = ax.scatter(gIFARMchirp, gIFAREffDist, c=gIFARStat,\
                      norm=colors.Normalize(0,1,clip=False), marker='o',\
-                     edgecolors='none', cmap=cm.plasma)
+                     edgecolors='none')
     if len(gMissed2Mchirp):
       ax.scatter(gMissed2Mchirp, gMissed2EffDist, c="r", marker='x',\
                  edgecolors='r')
@@ -1618,7 +1619,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARMchirp):
       p = ax.scatter(gIFARMchirp, gIFAREffDist, c=gIFARStat,\
                      norm=colors.Normalize(0,1,clip=False), marker='o',\
-                     edgecolors='none', cmap=cm.plasma)
+                     edgecolors='none')
     if len(gFoundMchirp):
       ax.scatter(gFoundMchirp, gFoundEffDist, c="b", marker='x',\
                  edgecolors='g')
@@ -1641,7 +1642,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARTime):
       p = ax.scatter(gIFARTime, gIFAREffDist, c=gIFARStat,\
                      norm=colors.Normalize(0,1,clip=False), marker='o',\
-                     edgecolors='none', cmap=cm.plasma)
+                     edgecolors='none')
     if len(gMissed2Time):
       ax.scatter(gMissed2Time, gMissed2EffDist, c="r", marker='x',\
                  edgecolors='r')
@@ -1672,7 +1673,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARTime):
       p = ax.scatter(gIFARTime, gIFAREffDist, c=gIFARStat,\
                      norm=colors.Normalize(0,1,clip=False), marker='o',\
-                     edgecolors='none', cmap=cm.plasma)
+                     edgecolors='none')
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundEffDist, c="b", marker='x', edgecolors='g')
     ax.grid()
@@ -1708,7 +1709,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       gIFARSpin2 = np.sqrt(gIFARSpin2x**2 + gIFARSpin2y**2 + gIFARSpin2z**2)
       p = ax.scatter(gIFARSpin1, gIFARSpin2, c=gIFARStat,
                      norm=colors.Normalize(0, 1, clip=False), marker="o",
-                     edgecolors="none", cmap=cm.plasma)
+                     edgecolors="none")
     if len(missedInjSpin1x):
       ax.scatter(missedInjSpin1, missedInjSpin2, c="k", marker="x",
                  edgecolors="k")
@@ -1740,8 +1741,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(gFoundm1, gFoundm2, c="g", marker="x", edgecolors="g")
     if len(gIFARm1):
       p = ax.scatter(gIFARm1, gIFARm2, c=gIFARStat, edgecolors="none",
-                     norm=colors.Normalize(0, 1, clip=False), marker="o",
-                     cmap=cm.plasma)
+                     norm=colors.Normalize(0, 1, clip=False), marker="o")
     if len(missedInjm1):
       ax.scatter(missedInjm1, missedInjm2, c="k", marker="x", edgecolors="k")
     if len(gMissed2m1):
@@ -1767,8 +1767,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(gFoundMchirp, gFoundInc, c="g", marker="x", edgecolors="g")
     if len(gIFARInc):
       p = ax.scatter(gIFARMchirp, gIFARInc, c=gIFARStat, edgecolors="none",
-                     norm=colors.Normalize(0, 1, clip=False), marker="o",
-                     cmap=cm.plasma)
+                     norm=colors.Normalize(0, 1, clip=False), marker="o")
     if len(gMissed2Inc):
       ax.scatter(gMissed2Mchirp, gMissed2Inc, c="r", marker="x",
                  edgecolors="r")
@@ -1811,7 +1810,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       if len(gIFARMchirp):
         p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site],\
                       c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
-                      marker='o', edgecolors='none', cmap=cm.plasma)
+                      marker='o', edgecolors='none')
       ax.semilogy()
       if len(gIFARMchirp):
         cb = ax.figure.colorbar(p)
@@ -1839,7 +1838,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       if len(gIFARTime):
         p = ax.scatter(gIFARTime ,gIFAREffSiteDist[site],\
                       c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
-                      marker='o', edgecolors='none', cmap=cm.plasma)
+                      marker='o', edgecolors='none')
       ax.semilogy()
       if len(gIFARTime):
         cb = ax.figure.colorbar(p)
@@ -1866,7 +1865,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARMchirp):
       p = ax.scatter(gIFARMchirp, gIFARDist, c=gIFARStat,\
                     norm=colors.Normalize(0,1,clip=False),\
-                    marker='o', edgecolors='none', cmap=cm.plasma)
+                    marker='o', edgecolors='none')
     ax.semilogy()
     if len(gIFARMchirp):
       cb = ax.figure.colorbar(p)
@@ -1891,7 +1890,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARTime):
       p = ax.scatter(gIFARTime, gIFARDist, c=gIFARStat,\
                     norm=colors.Normalize(0,1,clip=False),\
-                    marker='o', edgecolors='none', cmap=cm.plasma)
+                    marker='o', edgecolors='none')
     ax.semilogy()
     if len(gIFARTime):
       cb = ax.figure.colorbar(p)
