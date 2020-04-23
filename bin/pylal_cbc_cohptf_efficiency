@@ -1597,14 +1597,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(missedInjMchirp, missedInjEffDist, c="k", marker='x',\
                  edgecolors='k')
     ax.grid()
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARMchirp):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
     ax.set_xlabel("Mchirp")
     ax.set_ylabel("Inverse sum of effective distances")
     ax.set_title("Injections found louder than loudest background event")
-    #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig('%s/found_missed_injections_effdist.png' % outdir)
     plt.close()
 
@@ -1624,14 +1623,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(gFoundMchirp, gFoundEffDist, c="b", marker='x',\
                  edgecolors='g')
     ax.grid()
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARMchirp):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
     ax.set_xlabel("Mchirp")
     ax.set_ylabel("Inverse sum of effective distances")
     ax.set_title("Injections found louder than loudest background event")
-    #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig('%s/missed_found_injections_effdist.png' % outdir)
     plt.close()
 
@@ -1650,7 +1648,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(missedInjTime, missedInjEffDist, c="k", marker='x',\
                  edgecolors='k')
     ax.grid()
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARTime):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
@@ -1658,7 +1656,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylabel("Inverse sum of effective distances")
     ax.set_title("Injections found louder than loudest background event")
     ax.set_xlim([ start, end ])
-    #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig("%s/found_missed_injections_effdist_time.png" % outdir)
     plt.close()
 
@@ -1677,7 +1674,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundEffDist, c="b", marker='x', edgecolors='g')
     ax.grid()
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARTime):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
@@ -1685,7 +1682,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylabel("Inverse sum of effective distances")
     ax.set_title("Injections found louder than loudest background event")
     ax.set_xlim([ start, end ])
-    #ax.set_ylim([ 0.5, 1000 ])
     fig.savefig("%s/missed_found_injections_effdist_time.png" % outdir)
     plt.close()
 
@@ -1811,14 +1807,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site],\
                       c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
                       marker='o', edgecolors='none')
-      ax.semilogy()
+      ax.set_yscale("log")
       if len(gIFARMchirp):
         cb = ax.figure.colorbar(p)
         cb.ax.set_ylabel("FAP")
       ax.set_xlabel("Mchirp")
       ax.set_ylabel("%s effective distance" % sitename[site])
       ax.set_title("Injections found louder than loudest background event")
-      #ax.set_ylim([ 0.5, 1000 ])
       fig.savefig("%s/found_missed_injections_effdist_%s.png"\
                    % (outdir, site.lower()))
       plt.close()
@@ -1839,7 +1834,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         p = ax.scatter(gIFARTime ,gIFAREffSiteDist[site],\
                       c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
                       marker='o', edgecolors='none')
-      ax.semilogy()
+      ax.set_yscale("log")
       if len(gIFARTime):
         cb = ax.figure.colorbar(p)
         cb.ax.set_ylabel("FAP")
@@ -1847,7 +1842,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.set_ylabel("%s effective distance" % sitename[site])
       ax.set_title("Injections found louder than loudest background event")
       ax.set_xlim([ start, end ])
-      #ax.set_ylim([ 0.5, 1000 ])
       fig.savefig("%s/found_missed_injections_effdist_time_%s.png"\
                    % (outdir, site.lower()))
       plt.close()
@@ -1866,14 +1860,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       p = ax.scatter(gIFARMchirp, gIFARDist, c=gIFARStat,\
                     norm=colors.Normalize(0,1,clip=False),\
                     marker='o', edgecolors='none')
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARMchirp):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
     ax.set_xlabel("Mchirp")
     ax.set_ylabel("Distance (Mpc)")
     ax.set_title("Injections found louder than loudest background event")
-    #ax.set_ylim([ 0.5, 100 ])
     fig.savefig("%s/found_missed_injections_dist.png" % outdir)
     plt.close()
   
@@ -1891,7 +1884,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       p = ax.scatter(gIFARTime, gIFARDist, c=gIFARStat,\
                     norm=colors.Normalize(0,1,clip=False),\
                     marker='o', edgecolors='none')
-    ax.semilogy()
+    ax.set_yscale("log")
     if len(gIFARTime):
       cb = ax.figure.colorbar(p)
       cb.ax.set_ylabel("FAP")
@@ -1899,7 +1892,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     ax.set_ylabel("Distance (Mpc)")
     ax.set_title("Injections found louder than loudest background event")
     ax.set_xlim([ start, end ])
-    #ax.set_ylim([ 0.5, 100 ])
     fig.savefig("%s/found_missed_injections_dist_time.png" % outdir)
     plt.close()
 
