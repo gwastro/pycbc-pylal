@@ -37,7 +37,6 @@ from pylal import viz
 
 # general defaults
 pylab.rc("lines", markersize=12)
-pylab.rc("text", usetex=True)
 
 # Utility function
 def float_to_latex(x, format="%.2g"):
@@ -177,7 +176,7 @@ def method_callable_once(f):
     _new.__name__ = f.__name__
     return _new
 
-_dq_params = {"text.usetex": True,   "text.verticalalignment": "center",
+_dq_params = {"text.verticalalignment": "center",
               "lines.linewidth": 2,  "xtick.labelsize": 16,
               "ytick.labelsize": 16, "axes.titlesize": 22,
               "axes.labelsize": 16,  "axes.linewidth": 1,
