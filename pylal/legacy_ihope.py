@@ -679,7 +679,7 @@ class PyGRBMakeSummaryPage(LegacyAnalysisExecutable):
 
     def create_node(self, parent=None, c_file=None, open_box=False,
                     seg_plot=None, tuning_tags=None, exclusion_tags=None,
-                    html_dir=None, time_slides=None, tags=None):
+                    html_dir=None, time_slides=False, tags=None):
         if tags is None:
             tags = []
         node = Node(self)
@@ -690,7 +690,7 @@ class PyGRBMakeSummaryPage(LegacyAnalysisExecutable):
         node.add_opt('--dec', self.cp.get('workflow', 'dec'))
         node.add_opt('--ifo-tag', self.ifos)
 
-        if time_slides is not None:
+        if time_slides:
             node.add_opt('--time-slides')
 
         if tuning_tags is not None:
