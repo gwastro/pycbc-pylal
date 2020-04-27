@@ -1142,12 +1142,17 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
                      "failed with zeros in a loglog plot\n")
 
   # plot sky grid
+  # remove the sidereal drift from the longitudes and plot points as at GRB time
+  lons = trigLongitude - (numpy.array(trigTime) * 360.0 / 86164.0905)
+  # plot only unique points
+  lats, indices = numpy.unique(trigLatitude, return_index=True)
+
   fig = plt.figure()
   ax  = fig.gca()
-  ax.set_title("coh\_PTF %s Sky Grid" % tag, fontsize=18)
+  ax.set_title("coh_PTF Sky Grid for %s" % tag, fontsize=18)
   ax.set_xlabel("Longitude (Degrees)", fontsize=16)
   ax.set_ylabel("Latitude (Degrees)", fontsize=16)
-  ax.plot(trigLongitude, trigLatitude, 'ko', markerfacecolor='blue')
+  ax.plot(lons[indices], lats, 'ko', markerfacecolor='blue')
   fig.savefig("%s/%s_sky_grid.png" % (outdir, tag))
   plt.close()
   p+=1 
