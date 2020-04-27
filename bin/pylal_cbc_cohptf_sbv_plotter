@@ -1169,6 +1169,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
                   else type(labels[0])(float(l) + 360) if float(l) < 0
                   else l for l in labels]
     ax.set_xticklabels(new_labels)
+  ax.grid()
   fig.savefig("%s/%s_sky_grid.png" % (outdir, tag))
   plt.close()
   p+=1 
