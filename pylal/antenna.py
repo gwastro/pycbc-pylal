@@ -72,7 +72,7 @@ def response( gpsTime, rightAscension, declination, inclination,
   gmst_rad = GreenwichMeanSiderealTime(gps)
 
   # create detector-name map
-  detMap = {'H1': 'LHO_4k', 'H2': 'LHO_2k', 'L1': 'LLO_4k',
+  detMap = {'H1': 'LHO_4k', 'H2': 'LHO_2k', 'K1': 'KAGRA', 'L1': 'LLO_4k',
             'G1': 'GEO_600', 'V1': 'VIRGO', 'T1': 'TAMA_300'}
   try:
     detector=detMap[det]

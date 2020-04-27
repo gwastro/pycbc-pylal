@@ -78,19 +78,23 @@ def get_bestnr( trig, q=4.0, n=3.0, null_thresh=(4.25,6), snr_threshold=6.,\
                                     numpy.degrees(trig.dec),\
                                     trig.get_end())
     for ifo in ifos:
-        if ifo.lower()[0] == 'h' :
+        if ifo.lower()[0] == 'h':
             i = ifo.lower()
+        elif ifo.lower()[0] == 'k':
+            i = 't'
         else:
             i = ifo[0].lower()
         sens[ifo] = getattr(trig, 'sigmasq_%s' % i.lower()) * \
                         sum(numpy.array([fPlus[ifo], fCross[ifo]])**2)
     ifos.sort(key=lambda ifo: sens[ifo], reverse=True)
     if len(ifos) > 1:
-        for i in xrange(0, 2):
-            if ifos[i].lower()[0] == 'h' :
-                i = ifos[i].lower()
+        for ifo in ifos:
+            if ifo.lower()[0] == 'h':
+                i = ifo.lower()
+            elif ifo.lower()[0] == 'k':
+                i = 't'
             else:
-                i = ifos[i][0].lower()
+                i = ifo[0].lower()
             if getattr(trig, 'snr_%s' % i) < sngl_snr_threshold:
                 return 0
 
@@ -210,7 +214,7 @@ def get_det_response(ra, dec, trigTime):
     f_cross = {}
     inclination   = 0
     polarization  = 0
-    for ifo in ['G1','H1','H2','L1','T1','V1']:
+    for ifo in ['G1','H1','H2','K1','L1','T1','V1']:
         f_plus[ifo],f_cross[ifo],_,_ = antenna.response(trigTime, ra, dec,\
                                                         inclination,
                                                         polarization, 'degree',
