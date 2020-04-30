@@ -907,7 +907,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         # Trigger is outside of mass bin
         gIFARStat[ix] = totalTrials
     gIFARStat = gIFARStat / totalTrials
-          
+    MF = np.argsort(gIFARStat)
+    FM = MF[::-1]
+
     gIFARm1           = foundInjm1[nonzeroFAP]
     gIFARm2           = foundInjm2[nonzeroFAP]
     gIFARRecm1        = foundTrigm1[nonzeroFAP]
@@ -1592,8 +1594,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gMissed2Mchirp):
       ax.scatter(gMissed2Mchirp, gMissed2EffDist, c="r", marker="x", s=10)
     if len(gIFARMchirp):
-      p = ax.scatter(gIFARMchirp, gIFAREffDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARMchirp[FM], gIFAREffDist[FM], c=gIFARStat[FM],
+                     vmin=0, vmax=1, s=40, edgecolor="w")
     if len(gFoundMchirp):
       ax.scatter(gFoundMchirp, gFoundEffDist, c=fnd_col, marker="+", s=30)
     if len(gIFARMchirp):
@@ -1612,8 +1614,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundMchirp):
       ax.scatter(gFoundMchirp, gFoundEffDist, c=fnd_col, marker="+", s=15)
     if len(gIFARMchirp):
-      p = ax.scatter(gIFARMchirp, gIFAREffDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARMchirp[MF], gIFAREffDist[MF], c=gIFARStat[MF],
+                     vmin=0, vmax=1, s=40, edgecolor="w")
     if len(gMissed2Mchirp):
       ax.scatter(gMissed2Mchirp, gMissed2EffDist, c="r", marker="x", s=40)
     if len(missedInjMchirp):
@@ -1636,8 +1638,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gMissed2Time):
       ax.scatter(gMissed2Time, gMissed2EffDist, c="r", marker='x', s=10)
     if len(gIFARTime):
-      p = ax.scatter(gIFARTime, gIFAREffDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARTime[FM], gIFAREffDist[FM], c=gIFARStat[FM], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundEffDist, c=fnd_col, marker='+', s=30)
     if len(gIFARTime):
@@ -1657,8 +1659,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundEffDist, c=fnd_col, marker='+', s=15)
     if len(gIFARTime):
-      p = ax.scatter(gIFARTime, gIFAREffDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARTime[MF], gIFAREffDist[MF], c=gIFARStat[MF], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gMissed2Time):
       ax.scatter(gMissed2Time, gMissed2EffDist, c="r", marker='x', s=40)
     if len(missedInjTime):
@@ -1682,8 +1684,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gMissed2Mchirp):
       ax.scatter(gMissed2Mchirp, gMissed2Dist, c="r", marker="x", s=10)
     if len(gIFARMchirp):
-      p = ax.scatter(gIFARMchirp, gIFARDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARMchirp[FM], gIFARDist[FM], c=gIFARStat[FM], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gFoundMchirp):
       ax.scatter(gFoundMchirp, gFoundDist, c=fnd_col, marker="+", s=30)
     if len(gIFARMchirp):
@@ -1702,8 +1704,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundMchirp):
       ax.scatter(gFoundMchirp, gFoundDist, c=fnd_col, marker="+", s=15)
     if len(gIFARMchirp):
-      p = ax.scatter(gIFARMchirp, gIFARDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARMchirp[MF], gIFARDist[MF], c=gIFARStat[MF], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gMissed2Mchirp):
       ax.scatter(gMissed2Mchirp, gMissed2Dist, c="r", marker="x", s=40)
     if len(missedInjMchirp):
@@ -1726,8 +1728,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gMissed2Time):
       ax.scatter(gMissed2Time, gMissed2Dist, c="r", marker='x', s=10)
     if len(gIFARTime):
-      p = ax.scatter(gIFARTime, gIFARDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARTime[FM], gIFARDist[FM], c=gIFARStat[FM], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundDist, c=fnd_col, marker='+', s=30)
     if len(gIFARTime):
@@ -1747,8 +1749,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundTime):
       ax.scatter(gFoundTime, gFoundDist, c=fnd_col, marker='+', s=15)
     if len(gIFARTime):
-      p = ax.scatter(gIFARTime, gIFARDist, c=gIFARStat, vmin=0, vmax=1,
-                     s=40, edgecolor="w")
+      p = ax.scatter(gIFARTime[MF], gIFARDist[MF], c=gIFARStat[MF], vmin=0,
+                     vmax=1, s=40, edgecolor="w")
     if len(gMissed2Time):
       ax.scatter(gMissed2Time, gMissed2Dist, c="r", marker='x', s=40)
     if len(missedInjTime):
@@ -1778,8 +1780,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         ax.scatter(gMissed2Mchirp, gMissed2EffSiteDist[site], c="r", s=10,
                    marker="x")
       if len(gIFARMchirp):
-        p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site], c=gIFARStat, s=40,
-                       vmin=0, vmax=1, edgecolor="w")
+        p = ax.scatter(gIFARMchirp[FM], gIFAREffSiteDist[site][FM],
+                       c=gIFARStat[FM], s=40, vmin=0, vmax=1, edgecolor="w")
       if len(gFoundMchirp):
         ax.scatter(gFoundMchirp, gFoundEffSiteDist[site], c=fnd_col, s=30,
                    marker="+")
@@ -1800,8 +1802,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         ax.scatter(gFoundMchirp, gFoundEffSiteDist[site], c=fnd_col, s=15,
                    marker="+")
       if len(gIFARMchirp):
-        p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site], c=gIFARStat, s=40,
-                       vmin=0, vmax=1, edgecolor="w")
+        p = ax.scatter(gIFARMchirp[MF], gIFAREffSiteDist[site][MF],
+                       c=gIFARStat[MF], s=40, vmin=0, vmax=1, edgecolor="w")
       if len(gMissed2Mchirp):
         ax.scatter(gMissed2Mchirp, gMissed2EffSiteDist[site], c="r", s=40,
                    marker="x")
@@ -1828,8 +1830,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         ax.scatter(gMissed2Time, gMissed2EffSiteDist[site], c="r", s=10,
                    marker="x")
       if len(gIFARTime):
-        p = ax.scatter(gIFARTime, gIFAREffSiteDist[site], c=gIFARStat, s=40,
-                       vmin=0, vmax=1, edgecolor="w")
+        p = ax.scatter(gIFARTime[FM], gIFAREffSiteDist[site][FM],
+                       c=gIFARStat[FM], s=40, vmin=0, vmax=1, edgecolor="w")
       if len(gFoundTime):
         ax.scatter(gFoundTime, gFoundEffSiteDist[site], c=fnd_col, s=30,
                    marker="+")
@@ -1851,8 +1853,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         ax.scatter(gFoundTime, gFoundEffSiteDist[site], c=fnd_col, s=15,
                    marker="+")
       if len(gIFARTime):
-        p = ax.scatter(gIFARTime, gIFAREffSiteDist[site], c=gIFARStat, s=40,
-                       vmin=0, vmax=1, edgecolor="w")
+        p = ax.scatter(gIFARTime[MF], gIFAREffSiteDist[site][MF],
+                       c=gIFARStat[MF], s=40, vmin=0, vmax=1, edgecolor="w")
       if len(gMissed2Time):
         ax.scatter(gMissed2Time, gMissed2EffSiteDist[site], c="r", s=40,
                    marker="x")
@@ -1887,8 +1889,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gIFARSpin1x):
       gIFARSpin1 = np.sqrt(gIFARSpin1x**2 + gIFARSpin1y**2 + gIFARSpin1z**2)
       gIFARSpin2 = np.sqrt(gIFARSpin2x**2 + gIFARSpin2y**2 + gIFARSpin2z**2)
-      p = ax.scatter(gIFARSpin1, gIFARSpin2, c=gIFARStat, s=40, vmin=0, vmax=1,
-                     edgecolor="w")
+      p = ax.scatter(gIFARSpin1[MF], gIFARSpin2[MF], c=gIFARStat[MF], s=40,
+                     vmin=0, vmax=1, edgecolor="w")
     if len(gMissed2Spin1x):
       gMissed2Spin1 = np.sqrt(gMissed2Spin1x**2 + gMissed2Spin1y**2 + \
                               gMissed2Spin1z**2)
@@ -1930,8 +1932,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundm1):
       ax.scatter(gFoundq, gFoundM, c=fnd_col, s=15, marker="+")
     if len(gIFARm1):
-      p = ax.scatter(gIFARq, gIFARM, c=gIFARStat, s=40, vmin=0, vmax=1,
-                     edgecolor="w")
+      p = ax.scatter(gIFARq[MF], gIFARM[MF], c=gIFARStat[MF], s=40, vmin=0,
+                     vmax=1, edgecolor="w")
     if len(gMissed2m1):
       ax.scatter(gMissed2q, gMissed2M, c="r", s=40, marker="x")
     if len(missedInjm1):
@@ -1965,8 +1967,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       ax.scatter(np.rad2deg(gFoundInc2), gFoundMchirp, c=fnd_col, s=15,
                  marker="+")
     if len(gIFARInc):
-      p = ax.scatter(np.rad2deg(gIFARInc2), gIFARMchirp, c=gIFARStat, s=40,
-                     vmin=0, vmax=1, edgecolor="w")
+      p = ax.scatter(np.rad2deg(gIFARInc2[MF]), gIFARMchirp[MF], s=40,
+                     c=gIFARStat[MF], vmin=0, vmax=1, edgecolor="w")
     if len(gMissed2Inc):
       ax.scatter(np.rad2deg(gMissed2Inc2), gMissed2Mchirp, c="r", s=40,
                  marker="x")
@@ -1989,8 +1991,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     if len(gFoundInc):
       ax.scatter(np.cos(gFoundInc2), gFoundDist, c=fnd_col, s=15, marker="+")
     if len(gIFARInc):
-      p = ax.scatter(np.cos(gIFARInc2), gIFARDist, c=gIFARStat, s=40, vmin=0,
-                     vmax=1, edgecolor="w")
+      p = ax.scatter(np.cos(gIFARInc2[MF]), gIFARDist[MF], c=gIFARStat[MF],
+                     s=40, vmin=0, vmax=1, edgecolor="w")
     if len(gMissed2Inc):
       ax.scatter(np.cos(gMissed2Inc2), gMissed2Dist, c="r", s=40, marker="x")
     if len(missedInjInc):
