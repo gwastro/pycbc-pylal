@@ -100,6 +100,7 @@ class BasicPlot(object):
         raise NotImplementedError
 
     def savefig(self, *args, **kwargs):
+        #print(pylab.rcParams)
         self.fig.savefig(*args, **kwargs)
 
     def close(self):
