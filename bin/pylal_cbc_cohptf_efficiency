@@ -1,4 +1,4 @@
-#!/home/tessa.carver/.conda/envs/pygrb-o3a/bin/python
+#!/usr/bin/env python
 
 # Copyright (C) 2011 Ian W. Harry
 #
@@ -725,7 +725,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                              chisq_threshold = newSnrThresh,n=chisq_nhigh,\
                              null_grad_thresh = nullGradThresh,\
                              null_grad_val = nullGradVal)
-        print "bin[0]: {0}, len(loudOnBestNR[bin[0]]): {1}, loudOnBestNR: {2}, len(binTrigs): {3}, binTrigs[0]: {4}".format(bin[0],loudOnBestNR[bin[0]],loudOnBestNR, len(binTrigs), binTrigs[0])
+   
         # If the loudest event has bestNR = 0, there is no event at all!
         if loudOnBestNR[bin[0]] == 0:
           loudOnBestNRTrigs[bin[0]] = None
@@ -750,7 +750,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
           totOffSNR = np.concatenate([totOffSNR,timeBinVetoMaxBestNR[slideID][i]])
         FAP = numTrialsLouder/totalTrials
         FAP_test = sum(totOffSNR>loudOnBestNR[bin[0]])/totalTrials
-        print "FAP:{0}, FAP_test: {1}, len(totOffSNR:{2}".format(FAP,FAP_test,len(totOffSNR))
         pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP
         loudOnFAP[bin[0]] = FAP
         d = ['%s-%s' % tuple(bin), pval, trig.get_end(),\
