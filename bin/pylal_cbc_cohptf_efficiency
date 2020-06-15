@@ -2014,6 +2014,8 @@ if __name__=='__main__':
   numMCInjs = opts.num_mc_injections
   segLength = opts.segment_length
   padData = opts.pad_data
+  if len(massBins)>1 and onsourceFile == None:
+      sys.exit("Efficiency code adapted for a single mass bin")
 
   rc('font', size=14)
   main(segdir, outdir, trigFile, foundFile, missedFile,\
