@@ -726,6 +726,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
                              chisq_threshold = newSnrThresh,n=chisq_nhigh,\
                              null_grad_thresh = nullGradThresh,\
                              null_grad_val = nullGradVal)
+   
         # If the loudest event has bestNR = 0, there is no event at all!
         if loudOnBestNR[bin[0]] == 0:
           loudOnBestNRTrigs[bin[0]] = None
@@ -743,10 +744,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       if loudOnBestNRTrigs[bin[0]]:
         trig = loudOnBestNRTrigs[bin[0]]
         numTrialsLouder = 0
+        totOffSNR = np.array([])
         for slideID in range(numSlides):
           numTrialsLouder += sum(timeBinVetoMaxBestNR[slideID][i] > \
                                  loudOnBestNR[bin[0]])
+          totOffSNR = np.concatenate([totOffSNR,timeBinVetoMaxBestNR[slideID][i]])
         FAP = numTrialsLouder/totalTrials
+        FAP_test = sum(totOffSNR>loudOnBestNR[bin[0]])/totalTrials
         pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP
         loudOnFAP[bin[0]] = FAP
         d = ['%s-%s' % tuple(bin), pval, trig.get_end(),\
@@ -767,7 +771,15 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     file.write(dqHTMLUtils.write_table(markup.page(), th, td)())
     file.close()
     file2.close()
-  
+  else:
+    for i,bin in enumerate(massBins):
+        totOffSNR = np.array([])
+        for slideID in range(numSlides):
+          totOffSNR = np.concatenate([totOffSNR,timeBinVetoMaxBestNR[slideID][i]])
+        medSNR = np.median(totOffSNR)
+        FAP = sum(totOffSNR>medSNR)/totalTrials
+      
+ 
   #
   # Now we can start dealing with the injections
   #
@@ -1157,6 +1169,11 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       for i,bin in enumerate(massBins):
         moreSigThanOnSource[i,:] = (injFAP <= loudOnFAP[bin[0]])
       moreSigThanOnSource = moreSigThanOnSource.all(0)
+    else:
+      moreSigThanOnSource = np.ndarray((len(massBins), len(foundInjs)))
+      for i,bin in enumerate(massBins):
+        moreSigThanOnSource[i,:] = (injFAP <= 0.5)
+      moreSigThanOnSource = moreSigThanOnSource.all(0)
 
     # loop over mass bins
     distance_count = np.zeros(len(distBins))
@@ -1187,31 +1204,35 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
           except IndexError:
             # Trigger is outside of mass bin
             foundTrigLoudOnBestNR[ix] = 0
+      else:
+        foundTrigLoudOnBestNR = np.zeros([len(foundTrigMchirp)])
+        for ix, mc in \
+                    enumerate(foundTrigMchirp):
+            foundTrigLoudOnBestNR[ix] = medSNR
+      onBestNRCut  = foundTrigBestNR > foundTrigLoudOnBestNR
 
-        onBestNRCut  = foundTrigBestNR > foundTrigLoudOnBestNR
-
-        #
-        # check whether injection is found for the purposes of exclusion
-        # distance calculation
-        #
-        # found if more louder than all on source, or louder than
-        # missed if not louder than on loudest on source,
-        foundExcl = onBestNRCut & (moreSigThanOnSource) & \
-                    (foundTrigBestNR != 0)
-        # if not missed, doublecheck bestNR against nearby triggers
-        nearTest = np.zeros((foundExcl).sum()).astype(bool)
-        for j,(t,bestNR) in enumerate(zip(foundInjTime[foundExcl],\
-                                          foundTrigBestNR[foundExcl])):
-          nearBestNR  = trigAllBestNR[zeroLagSlideID]\
-                        [np.abs(trigAllTime[zeroLagSlideID]-t) < clusterWindow]
-          nearTest[j] = ~((nearBestNR * glitchCheckFac > bestNR).any())
-        # apply the local test, putmask doesn't seem to work...
-        #np.putmask(foundExcl, foundExcl==True, nearTest)
-        c = 0
-        for z,b in enumerate(foundExcl):
-          if foundExcl[z]:
-            foundExcl[z] = nearTest[c]
-            c += 1
+      #
+      # check whether injection is found for the purposes of exclusion
+      # distance calculation
+      #
+      # found if more louder than all on source, or louder than
+      # missed if not louder than on loudest on source,
+      foundExcl = onBestNRCut & (moreSigThanOnSource) & \
+                  (foundTrigBestNR != 0)
+      # if not missed, doublecheck bestNR against nearby triggers
+      nearTest = np.zeros((foundExcl).sum()).astype(bool)
+      for j,(t,bestNR) in enumerate(zip(foundInjTime[foundExcl],\
+                                        foundTrigBestNR[foundExcl])):
+        nearBestNR  = trigAllBestNR[zeroLagSlideID]\
+                      [np.abs(trigAllTime[zeroLagSlideID]-t) < clusterWindow]
+        nearTest[j] = ~((nearBestNR * glitchCheckFac > bestNR).any())
+      # apply the local test, putmask doesn't seem to work...
+      #np.putmask(foundExcl, foundExcl==True, nearTest)
+      c = 0
+      for z,b in enumerate(foundExcl):
+        if foundExcl[z]:
+          foundExcl[z] = nearTest[c]
+          c += 1
 
       # loop over each random instance of the injection set
       for k in range(numMCInjs+1): 
@@ -2102,6 +2123,8 @@ if __name__=='__main__':
   numMCInjs = opts.num_mc_injections
   segLength = opts.segment_length
   padData = opts.pad_data
+  if len(massBins)>1 and onsourceFile == None:
+      sys.exit("Efficiency code adapted for a single mass bin")
 
   rc('font', size=14)
   main(segdir, outdir, trigFile, foundFile, missedFile,\
