@@ -2022,7 +2022,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
       cb = plt.colorbar(p, label="FAP")
     tt = np.arange(0, maxinc + 10, 10)
     tks = np.cos(np.deg2rad(tt))
-    tk_labs = [u'cos(%d\xb0)' % tk for tk in tt]
+    tk_labs = ['cos(%d deg)' % tk for tk in tt]
     plt.xticks(tks, tk_labs, fontsize=10)
     fig.autofmt_xdate()
     ax.set_xlim(np.cos(np.deg2rad(maxinc)), 1)
