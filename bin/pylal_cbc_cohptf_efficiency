@@ -294,10 +294,12 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   xmldoc = utils.load_filename(trigFile,gz=trigFile.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
   searchSumm = table.get_table(xmldoc, lsctables.SearchSummaryTable.tableName)
   ifos = sorted(map(str,searchSumm[0].get_ifos()))
-  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t'}
+  ifos_dict = {ifo: ('T1' if ifo=='K1' else ifo)  for ifo in ifos}
+  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'K1':'t', 'L1':'l', 'V1':'v', 'T1':'t'}
 
   trigs, slideDict, segmentDict = \
       MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles([trigFile])
+  trigs.instrument_id = ifoAtt
 
   # Identify the zero-lag slide
   zeroLagSlideID = None
@@ -359,6 +361,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   # Loop over the various slides
   sortedTrigCount = 0
   tmpTable = lsctables.New(lsctables.MultiInspiralTable)
+  tmpTable.instrument_id = ifoAtt
   for slideID in range(numSlides):
     # Begin by sorting the triggers into each slide
     # It seems that New is pretty slow, so run it once and then use deepcopy
@@ -366,7 +369,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
   for trig in trigs:
     sortedTrigs[int(trig.time_slide_id)].append(trig)
-
   for slideID in range(numSlides):
     sortedTrigCount += len(sortedTrigs[slideID])
 
@@ -567,6 +569,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   for i in range(min(len(offSourceTrigs), 30)):
     bestNR = offSourceTrigs[i][0]
     trig = offSourceTrigs[i][1]
+    trig.instrument_id = ifoAtt
     trigSlideID = int(trig.time_slide_id)
 
     # Get mass bin of trigger
@@ -770,8 +773,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
              trig.mass1, trig.mass2, trig.mchirp,\
              np.degrees(trig.ra), np.degrees(trig.dec),\
              trig.snr, trig.chisq, trig.bank_chisq,\
-             trig.cont_chisq, trig.get_null_snr()] + \
-            [trig.get_sngl_snr(ifo) for ifo in ifos] + [loudOnBestNR[bin[0]]]
+             trig.cont_chisq, nullsnr] + \
+            [trig.get_sngl_snr(ifos_dict[ifo]) for ifo in ifos] + [loudOnBestNR[bin[0]]]
         file2.write('%s\n' % pval.replace('<', '&lt'))
         td.append(d)
 
@@ -810,8 +813,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundTrigsNVeto = MultiInspiralUtils.ReadMultiInspiralFromFiles([foundFile])
 
     foundInjs = lsctables.New(lsctables.SimInspiralTable)
+    foundInjs.instrument_id = ifoAtt
     foundTrigs = lsctables.New(lsctables.MultiInspiralTable)
-
+    foundTrigs.instrument_id = ifoAtt
     for trig,sim in zip(foundTrigsNVeto,foundInjsNoVeto):
       if sim.get_end() not in vetoes.union(vetoes.keys()):
         foundInjs.append(sim)
@@ -862,7 +866,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundTrigBank    = np.asarray(foundTrigs.get_column('bank_chisq'))
     foundTrigAuto    = np.asarray(foundTrigs.get_column('cont_chisq'))
     foundTrigNullSNR = np.asarray(foundTrigs.get_null_snr())
-    foundTrigSnglSNR = dict((ifo, np.asarray(foundTrigs.get_sngl_snr(ifo)))\
+    foundTrigSnglSNR = dict((ifo, np.asarray(\
+                                foundTrigs.get_sngl_snr(ifos_dict[ifo])))\
                             for ifo in ifos)
     
     foundInjSpin1x   = np.asarray(foundInjs.get_column('spin1x'))
@@ -1802,8 +1807,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     plt.close()
 
     # Site-specific plots
-    sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
-                 'T':'TAMA' }
+    sitename = { 'G':'GEO', 'H':'Hanford', 'K':'KAGRA', 'L':'Livingston',\
+                 'V':'Virgo', 'T':'TAMA'}
 
     for site in sites:
       fig = plt.figure()
