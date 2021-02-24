@@ -164,14 +164,9 @@ def main( injCacheFile, outdir, maxIncl , injString , verbose=False ):
       currMInjs = SimInspiralUtils.ReadSimInspiralFromFiles([missed.path])
       currFTrigs = MultiInspiralUtils.ReadMultiInspiralFromFiles([found.path])
 
-      for inj in currMInjs:
-        if inj.get_theta() < maxInclRad:
-          missedInjs.append(inj)
-
-      for inj,trig in zip(currFInjs,currFTrigs):
-        if inj.get_theta() < maxInclRad:
-          foundInjs.append(inj)
-          foundTrigs.append(trig)
+      missedInjs.extend(currMInjs)
+      foundInjs.extend(currFInjs)
+      foundTrigs.extend(currFTrigs)
 
 
   # prepare xmldocument 

@@ -12,10 +12,6 @@ from numpy import power
 from pylal import rate
 
 #####################################################################
-# use tex labels
-params =  {'text.usetex': True }
-rcParams.update(params)
-
 
 def square_axis(axes=None):
   """
