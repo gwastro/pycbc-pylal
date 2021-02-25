@@ -583,17 +583,14 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
         if val > bestNR:
           numTrialsLouder += 1
     FAP = numTrialsLouder/totalTrials
-    pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP
-
-    # Get null SNR of trigger
-    nullsnr = trig.get_null_snr()
+    pval = '< %.3g' % (1./totalTrials) if FAP==0 else '%.3g' % FAP 
 
     d = [ '%s-%s' % tuple(trigBin), chunkNum, trigSlideID, pval,\
           '%.4f' % trig.get_end(),\
           '%.2f' % trig.mass1, '%.2f' % trig.mass2, '%.2f' % trig.mchirp,\
           '%.2f' % (np.degrees(trig.ra)), '%.2f'% (np.degrees(trig.dec)),\
           '%.2f' % trig.snr, '%.2f' % trig.chisq, '%.2f' % trig.bank_chisq,\
-          '%.2f' % trig.cont_chisq, '%.2f' % nullsnr ]
+          '%.2f' % trig.cont_chisq, '%.2f' % trig.get_null_snr() ]
     d.extend([ '%.2f' % getattr(trig,'snr_%s' % ifoAtt[ifo])\
                for ifo in ifos ])
     d.extend([ slideDict[trigSlideID][ifo] for ifo in ifos])
@@ -757,7 +754,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
              trig.mass1, trig.mass2, trig.mchirp,\
              np.degrees(trig.ra), np.degrees(trig.dec),\
              trig.snr, trig.chisq, trig.bank_chisq,\
-             trig.cont_chisq, nullsnr] + \
+             trig.cont_chisq, trig.get_null_snr()] + \
             [trig.get_sngl_snr(ifo) for ifo in ifos] + [loudOnBestNR[bin[0]]]
         file2.write('%s\n' % pval.replace('<', '&lt'))
         td.append(d)
