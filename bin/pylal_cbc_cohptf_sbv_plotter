@@ -180,6 +180,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
 
   # extract IFOS
   ifos = sorted(map(str, searchSumm[0].get_ifos()))
+  ifos_dict = {ifo: ('T1' if ifo=='K1' else ifo)  for ifo in ifos}
   ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t', 'K1':'t'} 
 
   tmp, slideDict, segmentDict = \
@@ -189,6 +190,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
           [slot for slot in tmp[0].__slots__ if hasattr(tmp[0], slot)]
   trigs = lsctables.New(lsctables.MultiInspiralTable,\
           columns=lsctables.MultiInspiralTable.loadcolumns)
+  trigs.instrument_id = ifoAtt
 
   # Construct veto list
   vetoes = segments.segmentlistdict()
@@ -235,6 +237,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
     tmp = table.get_table(xmldoc, lsctables.MultiInspiralTable.tableName)
     injs = lsctables.New(lsctables.MultiInspiralTable,\
                         columns=lsctables.MultiInspiralTable.loadcolumns)
+    injs.instrument_id = ifoAtt
     injs.extend(t for t in tmp if t.get_end() not in vetoes)
     if verbose:
       sys.stdout.write("%d injections found at %d.\n"\
@@ -283,7 +286,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
    
   # get single detector data
   trigCoincSNR  = (trigs.get_column('coinc_snr'))
-  trigIfoSNR    = dict((ifo, trigs.get_sngl_snr(ifo)) for ifo in ifos)
+  trigIfoSNR    = dict((ifo, trigs.get_sngl_snr(ifos_dict[ifo])) for ifo in ifos)
   tmp           = numpy.sort(trigIfoSNR.values(), 0)
   if len(ifos) > 0:
     trigFirstSNR  = tmp[-1,:]
@@ -394,7 +397,7 @@ def main(trigFile, injFile, tag, outdir, segdir, chisq_index=4.0,\
   
     # get single detector data
     injCoincSNR  = numpy.asarray(injs.get_column('coinc_snr'))
-    injIfoSNR    = dict((ifo, injs.get_sngl_snr(ifo)) for ifo in ifos)
+    injIfoSNR    = dict((ifo, injs.get_sngl_snr(ifos_dict[ifo])) for ifo in ifos)
     tmp          = numpy.sort(injIfoSNR.values(), 0)
     if len(ifos) > 0:
       injFirstSNR  = tmp[-1,:]

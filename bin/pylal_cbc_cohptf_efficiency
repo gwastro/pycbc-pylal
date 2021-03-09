@@ -759,6 +759,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     for i,bin in enumerate(massBins):
       if loudOnBestNRTrigs[bin[0]]:
         trig = loudOnBestNRTrigs[bin[0]]
+        trig.instrument_id = ifoAtt
         numTrialsLouder = 0
         totOffSNR = np.array([])
         for slideID in range(numSlides):
@@ -773,7 +774,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
              trig.mass1, trig.mass2, trig.mchirp,\
              np.degrees(trig.ra), np.degrees(trig.dec),\
              trig.snr, trig.chisq, trig.bank_chisq,\
-             trig.cont_chisq, nullsnr] + \
+             trig.cont_chisq, trig.get_null_snr()] + \
             [trig.get_sngl_snr(ifos_dict[ifo]) for ifo in ifos] + [loudOnBestNR[bin[0]]]
         file2.write('%s\n' % pval.replace('<', '&lt'))
         td.append(d)
