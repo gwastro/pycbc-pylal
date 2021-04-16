@@ -88,7 +88,7 @@ def get_bestnr( trig, q=4.0, n=3.0, null_thresh=(4.25,6), snr_threshold=6.,\
                         sum(numpy.array([fPlus[ifo], fCross[ifo]])**2)
     ifos.sort(key=lambda ifo: sens[ifo], reverse=True)
     if len(ifos) > 1:
-        for ifo in ifos:
+        for ifo in ifos[:2]:
             if ifo.lower()[0] == 'h':
                 i = ifo.lower()
             elif ifo.lower()[0] == 'k':

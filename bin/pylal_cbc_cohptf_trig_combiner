@@ -164,6 +164,7 @@ def main(trigFiles, ifoTag, userTag, segdir, outdir, grbTag=None, jobTag=None,
   if verbose: sys.stdout.write("\nFinding files...\n")
 
   # set columns
+  # NOTE: Including a workaround here for KAGRA
   ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t', 'K1':'t'}
   # set up columns
   validcols = lsctables.MultiInspiralTable.validcolumns.keys()

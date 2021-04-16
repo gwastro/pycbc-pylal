@@ -152,6 +152,7 @@ def main(trigFiles, injFiles, timeWindow, outdir, ifoTag,
   # MultiInspiralTable
 
   # set columns
+  # NOTE: Including a workaround here for KAGRA
   ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t', 'K1':'t'}
 
   # set up columns

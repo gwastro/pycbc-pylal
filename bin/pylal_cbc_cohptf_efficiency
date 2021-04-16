@@ -294,6 +294,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   xmldoc = utils.load_filename(trigFile,gz=trigFile.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
   searchSumm = table.get_table(xmldoc, lsctables.SearchSummaryTable.tableName)
   ifos = sorted(map(str,searchSumm[0].get_ifos()))
+  # NOTE: Including a workaround here for KAGRA
   ifos_dict = {ifo: ('T1' if ifo=='K1' else ifo)  for ifo in ifos}
   ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'K1':'t', 'L1':'l', 'V1':'v', 'T1':'t'}
 
@@ -2001,10 +2002,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     gIFARInc2 = 0.5 * np.pi - abs(gIFARInc - 0.5 * np.pi)
     gMissed2Inc2 = 0.5 * np.pi - abs(gMissed2Inc - 0.5 * np.pi)
     missedInjInc2 = 0.5 * np.pi - abs(missedInjInc - 0.5 * np.pi)
-
-    # Site-specific plots
-    sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
-                 'T':'TAMA', 'K':'KAGRA'}
 
     for site in sites:
       fig = plt.figure()
