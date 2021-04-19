@@ -195,6 +195,14 @@ def parse_command_line():
                      type="float", default=0,
                      help="The standard deviation to use when calculating the "\
                           "V1 calibration amplitude error.")
+  calopts.add_option("-G", "--g1-cal-error", action="store",\
+                     type="float", default=0,
+                     help="The standard deviation to use when calculating the "\
+                          "G1 calibration amplitude error.")
+  calopts.add_option("-u", "--k1-cal-error", action="store",\
+                     type="float", default=0,
+                     help="The standard deviation to use when calculating the "\
+                          "K1 calibration amplitude error.")
   calopts.add_option("-p", "--h1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the H1 "\
@@ -210,6 +218,14 @@ def parse_command_line():
   calopts.add_option("-R", "--v1-dc-cal-error", action="store",\
                      type="float", default=1.0,
                      help="The scaling factor to use when calculating the V1 "\
+                           "calibration amplitude error.")
+  calopts.add_option("-E", "--g1-dc-cal-error", action="store",\
+                     type="float", default=1.0,
+                     help="The scaling factor to use when calculating the G1 "\
+                           "calibration amplitude error.")
+  calopts.add_option("-F", "--k1-dc-cal-error", action="store",\
+                     type="float", default=1.0,
+                     help="The scaling factor to use when calculating the K1 "\
                            "calibration amplitude error.")
 
   parser.add_option("-S", "--old-code", action="store_true", default=False,\
@@ -278,10 +294,13 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   xmldoc = utils.load_filename(trigFile,gz=trigFile.endswith("gz"), contenthandler = lsctables.use_in(ligolw.LIGOLWContentHandler))
   searchSumm = table.get_table(xmldoc, lsctables.SearchSummaryTable.tableName)
   ifos = sorted(map(str,searchSumm[0].get_ifos()))
-  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'L1':'l', 'V1':'v', 'T1':'t'}
+  # NOTE: Including a workaround here for KAGRA
+  ifos_dict = {ifo: ('T1' if ifo=='K1' else ifo)  for ifo in ifos}
+  ifoAtt = {'G1':'g', 'H1':'h1', 'H2':'h2', 'K1':'t', 'L1':'l', 'V1':'v', 'T1':'t'}
 
   trigs, slideDict, segmentDict = \
       MultiInspiralUtils.ReadMultiInspiralTimeSlidesFromFiles([trigFile])
+  trigs.instrument_id = ifoAtt
 
   # Identify the zero-lag slide
   zeroLagSlideID = None
@@ -343,6 +362,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   # Loop over the various slides
   sortedTrigCount = 0
   tmpTable = lsctables.New(lsctables.MultiInspiralTable)
+  tmpTable.instrument_id = ifoAtt
   for slideID in range(numSlides):
     # Begin by sorting the triggers into each slide
     # It seems that New is pretty slow, so run it once and then use deepcopy
@@ -350,7 +370,6 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
   for trig in trigs:
     sortedTrigs[int(trig.time_slide_id)].append(trig)
-
   for slideID in range(numSlides):
     sortedTrigCount += len(sortedTrigs[slideID])
 
@@ -551,6 +570,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   for i in range(min(len(offSourceTrigs), 30)):
     bestNR = offSourceTrigs[i][0]
     trig = offSourceTrigs[i][1]
+    trig.instrument_id = ifoAtt
     trigSlideID = int(trig.time_slide_id)
 
     # Get mass bin of trigger
@@ -740,6 +760,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     for i,bin in enumerate(massBins):
       if loudOnBestNRTrigs[bin[0]]:
         trig = loudOnBestNRTrigs[bin[0]]
+        trig.instrument_id = ifoAtt
         numTrialsLouder = 0
         totOffSNR = np.array([])
         for slideID in range(numSlides):
@@ -755,7 +776,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
              np.degrees(trig.ra), np.degrees(trig.dec),\
              trig.snr, trig.chisq, trig.bank_chisq,\
              trig.cont_chisq, trig.get_null_snr()] + \
-            [trig.get_sngl_snr(ifo) for ifo in ifos] + [loudOnBestNR[bin[0]]]
+            [trig.get_sngl_snr(ifos_dict[ifo]) for ifo in ifos] + [loudOnBestNR[bin[0]]]
         file2.write('%s\n' % pval.replace('<', '&lt'))
         td.append(d)
 
@@ -784,6 +805,7 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
   if doinj:
 
     sites = [ifo[0] for ifo in ifos]
+    sites_alt = ["T" if ifo == "K1" else ifo[0] for ifo in ifos]
 
     missedInjs = SimInspiralUtils.ReadSimInspiralFromFiles([missedFile])\
             .veto(vetoes.union(vetoes.keys()))
@@ -793,8 +815,9 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundTrigsNVeto = MultiInspiralUtils.ReadMultiInspiralFromFiles([foundFile])
 
     foundInjs = lsctables.New(lsctables.SimInspiralTable)
+    foundInjs.instrument_id = ifoAtt
     foundTrigs = lsctables.New(lsctables.MultiInspiralTable)
-
+    foundTrigs.instrument_id = ifoAtt
     for trig,sim in zip(foundTrigsNVeto,foundInjsNoVeto):
       if sim.get_end() not in vetoes.union(vetoes.keys()):
         foundInjs.append(sim)
@@ -811,8 +834,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundInjMchirp   = np.asarray(foundInjs.get_column('mchirp'))
     foundInjMtot     = np.asarray(foundInjs.get_column('mtotal'))
     foundInjEffSiteDist =\
-        dict((ifo, foundInjs.get_column('eff_dist_%s' % ifo.lower()))\
-             for ifo in sites)
+        dict((ifo, foundInjs.get_column('eff_dist_%s' % ifo_alt.lower()))\
+             for ifo, ifo_alt in zip(sites, sites_alt))
     foundInjEffDist  = np.power(np.power(\
                                   np.asarray(foundInjEffSiteDist.values()),-1)\
                                 .sum(0),-1)
@@ -845,7 +868,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     foundTrigBank    = np.asarray(foundTrigs.get_column('bank_chisq'))
     foundTrigAuto    = np.asarray(foundTrigs.get_column('cont_chisq'))
     foundTrigNullSNR = np.asarray(foundTrigs.get_null_snr())
-    foundTrigSnglSNR = dict((ifo, np.asarray(foundTrigs.get_sngl_snr(ifo)))\
+    foundTrigSnglSNR = dict((ifo, np.asarray(\
+                                foundTrigs.get_sngl_snr(ifos_dict[ifo])))\
                             for ifo in ifos)
     
     foundInjSpin1x   = np.asarray(foundInjs.get_column('spin1x'))
@@ -1024,8 +1048,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
 
     missedInjMchirp = np.asarray(missedInjs.get_column('mchirp'))
     missedInjEffSiteDist =\
-        dict((ifo, missedInjs.get_column('eff_dist_%s' % ifo.lower()))\
-             for ifo in sites)
+        dict((ifo, missedInjs.get_column('eff_dist_%s' % ifo_alt.lower()))\
+             for ifo, ifo_alt in zip(sites, sites_alt))
     missedInjEffDist  = np.power(np.power(\
                                   np.asarray(missedInjEffSiteDist.values()),-1)\
                                 .sum(0),-1)
@@ -1785,8 +1809,8 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     plt.close()
 
     # Site-specific plots
-    sitename = { 'G':'GEO', 'H':'Hanford', 'L':'Livingston', 'V':'Virgo',\
-                 'T':'TAMA' }
+    sitename = { 'G':'GEO', 'H':'Hanford', 'K':'KAGRA', 'L':'Livingston',\
+                 'V':'Virgo', 'T':'TAMA'}
 
     for site in sites:
       fig = plt.figure()
@@ -1979,6 +2003,35 @@ def main(segdir, outdir, trigFile, foundFile, missedFile,\
     gMissed2Inc2 = 0.5 * np.pi - abs(gMissed2Inc - 0.5 * np.pi)
     missedInjInc2 = 0.5 * np.pi - abs(missedInjInc - 0.5 * np.pi)
 
+    for site in sites:
+      fig = plt.figure()
+      ax = fig.gca()
+      if len(missedInjMchirp):
+        ax.scatter(missedInjMchirp, missedInjEffSiteDist[site],\
+                   c="k", marker='x', edgecolors='k')
+      if len(gMissed2Mchirp):
+        ax.scatter(gMissed2Mchirp, gMissed2EffSiteDist[site],\
+                  c="r", marker='x', edgecolors='r')
+      if len(gFoundMchirp):
+        ax.scatter(gFoundMchirp, gFoundEffSiteDist[site],\
+                  c="b", marker='x', edgecolors='g')
+      ax.grid()
+      if len(gIFARMchirp):
+        p = ax.scatter(gIFARMchirp, gIFAREffSiteDist[site],\
+                      c=gIFARStat, norm=colors.Normalize(0,1,clip=False),\
+                      marker='o', edgecolors='none', cmap=cm.plasma)
+      ax.semilogy()
+      if len(gIFARMchirp):
+        cb = ax.figure.colorbar(p)
+        cb.ax.set_ylabel("FAP")
+      ax.set_xlabel("Mchirp")
+      ax.set_ylabel("%s effective distance" % sitename[site])
+      ax.set_title("Injections found louder than loudest background event")
+      #ax.set_ylim([ 0.5, 1000 ])
+      fig.savefig("%s/found_missed_injections_effdist_%s.png"\
+                   % (outdir, site.lower()))
+      plt.close()
+
     fig = plt.figure()
     ax = fig.gca()
     if len(gFoundInc):
@@ -2089,13 +2142,17 @@ if __name__=='__main__':
   n            = opts.chisq_nhigh
   wavErr       = opts.waveform_error
   calErrs      = {}
+  calErrs['G1']= opts.g1_cal_error
   calErrs['H1']= opts.h1_cal_error
   calErrs['H2']= opts.h2_cal_error
+  calErrs['K1']= opts.k1_cal_error
   calErrs['L1']= opts.l1_cal_error
   calErrs['V1']= opts.v1_cal_error
   calDCErrs       = {}
+  calDCErrs['G1'] = opts.g1_dc_cal_error
   calDCErrs['H1'] = opts.h1_dc_cal_error
   calDCErrs['H2'] = opts.h2_dc_cal_error
+  calDCErrs['K1'] = opts.k1_dc_cal_error
   calDCErrs['L1'] = opts.l1_dc_cal_error
   calDCErrs['V1'] = opts.v1_dc_cal_error
   oldCode      = opts.old_code
